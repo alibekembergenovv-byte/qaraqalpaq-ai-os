@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      String   @default("ADMIN")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  sources   Source[]
+  newsItems NewsItem[]
+  contents  Content[]
+}
+
+model Source {
+  id               String   @id @default(cuid())
+  name             String
+  url              String?
+  rssUrl           String?
+  categoryId       String?
+  category         Category? @relation(fields: [categoryId], references: [id])
+  credibilityScore Int      @default(50)
+  active           Boolean  @default(true)
+  lastChecked      DateTime?
+  frequency        Int      @default(60) // minutes
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  newsItems        NewsItem[]
+}
+
+model NewsItem {
+  id               String   @id @default(cuid())
+  title            String
+  sourceId         String
+  source           Source   @relation(fields: [sourceId], references: [id])
+  url              String   @unique
+  publicationDate  DateTime?
+  author           String?
+  summary          String?
+  originalLanguage String   @default("en")
+  categoryId       String?
+  category         Category? @relation(fields: [categoryId], references: [id])
+  relevanceScore   Int?
+  noveltyScore     Int?
+  viralityScore    Int?
+  aiScore          Int?
+  duplicateStatus  Boolean  @default(false)
+  status           String   @default("NEW") // NEW, REJECTED, CURATED
+  createdAt        DateTime @default(now())
+  contents         Content[]
+  factChecks       FactCheck[]
+}
+
+model FactCheck {
+  id              String   @id @default(cuid())
+  newsItemId      String
+  newsItem        NewsItem @relation(fields: [newsItemId], references: [id])
+  status          String   // PASS, WARNING, FAIL
+  confidenceScore Int
+  details         String?
+  createdAt       DateTime @default(now())
+}
+
+model Content {
+  id              String   @id @default(cuid())
+  newsItemId      String?
+  newsItem        NewsItem? @relation(fields: [newsItemId], references: [id])
+  categoryId      String?
+  category        Category? @relation(fields: [categoryId], references: [id])
+  title           String
+  imageUrl        String?
+  body            String
+  format          String   // BREAKING, HOW_TO, etc
+  status          String   // DRAFT, NEEDS_REVIEW, APPROVED, SCHEDULED, PUBLISHED, ARCHIVED
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  versions        ContentVersion[]
+  scores          ContentScore[]
+  scheduledPost   ScheduledPost?
+  publishedPost   PublishedPost?
+}
+
+model ContentVersion {
+  id        String   @id @default(cuid())
+  contentId String
+  content   Content  @relation(fields: [contentId], references: [id])
+  body      String
+  version   Int
+  createdAt DateTime @default(now())
+}
+
+model ContentScore {
+  id              String   @id @default(cuid())
+  contentId       String
+  content         Content  @relation(fields: [contentId], references: [id])
+  overallScore    Int
+  accuracy        Int
+  usefulness      Int
+  originality     Int
+  qaraqalpaqQuality Int
+  hookQuality     Int
+  brandAlignment  Int
+  createdAt       DateTime @default(now())
+}
+
+model AiAgent {
+  id          String   @id @default(cuid())
+  name        String
+  purpose     String
+  model       String   @default("gemini-2.5-pro")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AiPrompt {
+  id           String   @id @default(cuid())
+  name         String
+  agentId      String
+  systemPrompt String
+  userPrompt   String
+  version      Int      @default(1)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model LanguageTerm {
+  id           String   @id @default(cuid())
+  english      String
+  qaraqalpaq   String
+  description  String?
+  createdAt    DateTime @default(now())
+}
+
+model LanguageRule {
+  id           String   @id @default(cuid())
+  ruleType     String   // FORBIDDEN, PREFERRED, GRAMMAR, STYLE
+  pattern      String
+  suggestion   String?
+  description  String?
+  createdAt    DateTime @default(now())
+}
+
+model TelegramChannel {
+  id          String   @id @default(cuid())
+  name        String
+  channelId   String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model ScheduledPost {
+  id          String   @id @default(cuid())
+  contentId   String   @unique
+  content     Content  @relation(fields: [contentId], references: [id])
+  scheduledAt DateTime
+  status      String   @default("PENDING") // PENDING, PUBLISHED, FAILED
+  createdAt   DateTime @default(now())
+}
+
+model PublishedPost {
+  id          String   @id @default(cuid())
+  contentId   String   @unique
+  content     Content  @relation(fields: [contentId], references: [id])
+  telegramMsgId String?
+  publishedAt DateTime @default(now())
+  analytics   Analytics?
+}
+
+model Analytics {
+  id               String   @id @default(cuid())
+  publishedPostId  String   @unique
+  publishedPost    PublishedPost @relation(fields: [publishedPostId], references: [id])
+  views            Int      @default(0)
+  reactions        Int      @default(0)
+  shares           Int      @default(0)
+  comments         Int      @default(0)
+  forwards         Int      @default(0)
+  subscriberChange Int      @default(0)
+  lastUpdated      DateTime @default(now())
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  level     String   // INFO, WARNING, ERROR
+  source    String   // TELEGRAM, GEMINI, SCHEDULER, SCRAPER
+  message   String
+  details   String?
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  group     String   // GENERAL, AI, TELEGRAM, BRAND
+  updatedAt DateTime @updatedAt
+}
