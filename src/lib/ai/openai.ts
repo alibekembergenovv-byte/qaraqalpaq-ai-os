@@ -1,5 +1,7 @@
-import OpenAI from 'openai';
+import OpenAI from "openai";
 
-export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "",
-});
+// Klient soraw kelgende ǵana jaratıladı.
+// Búrın ol fayl júklengende jaratılatuǵın hám gilt joq bolsa build qulaytuǵın edi.
+export function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "" });
+}
