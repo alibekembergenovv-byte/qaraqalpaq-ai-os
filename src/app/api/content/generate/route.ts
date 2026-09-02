@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { openai } from "@/lib/ai/openai";
+import { getOpenAI } from "@/lib/ai/openai";
 
 export async function POST(req: Request) {
   try {
@@ -30,7 +30,7 @@ Source URL: ${news.url}`;
 
     let text = "";
     try {
-      const response = await openai.chat.completions.create({
+            const response = await getOpenAI().chat.completions.create({
         model: "gpt-4o",
         messages: [
           { role: "system", content: "You are a specialized Qaraqalpaq AI and Prompt Engineering expert. Keep outputs under 800 characters." },
