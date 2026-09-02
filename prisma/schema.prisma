@@ -4,9 +4,8 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-   url      = env("https://github.com/alibekembergenovv-byte/qaraqalpaq-ai-os/edit/main/prisma/schema.prisma")
+  url      = env("DATABASE_URL")
 }
-
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
