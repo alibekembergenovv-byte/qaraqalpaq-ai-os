@@ -11,7 +11,7 @@ import {
   TrendingUp 
 } from "lucide-react";
 import { prisma } from "@/lib/db";
-
+export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const newsCount = await prisma.newsItem.count();
   const contentCount = await prisma.content.count();
