@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { Telegraf, Markup } from "telegraf";
 import { getOpenAI } from "@/lib/ai/openai";
 export async function POST(req: Request) {
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
            const response = await getOpenAI().chat.completions.create({
               model: "gpt-4o",
               messages: [
-                 { role: "system", content: "Siz eń sapalı Qaraqalpaq AI hám kopirayting ekspertisiz. Tómendegi tekstti Qaraqalpaq tiline eń joqarı dárejede, qızıqlı etip awdarıń yamasa qayta jazıń (rewrite). Emojiler qosıń. Teksttiń tómengi jaǵına heshqanday avtor yaki kanal atın jazbań." },
+                 { role: "system", content: "Siz eń sapalı Qaraqalpaq tiliniń jasalma intellekt hám kopirayting ekspertisiz. Tómendegi tekstti Qaraqalpaq tiline eń joqarı dárejede, qızıqlı etip awdarıń yamasa qayta jazıń. ESKERTIW: 1. Ózbek yáki Qazaq tillerindegi sózlerdi aralastırmań! Tek ǵana taza Qaraqalpaq tilinde jazıń. 2. Mısal ushın: 'uchun' emes 'ushın', 'bilan' emes 'menen', 'va' emes 'hám', 'yoki' emes 'yamasa', 'qiling' emes 'qılıń'. 3. Grammatika hám jalǵawlardı durıs qollanıń (-nıń, -niń, -ǵa, -ge). 4. Tábiyiy adam jazǵanday bolsın. 5. Tómengine avtor atın jazbań." },
                  { role: "user", content: messageText }
               ],
               temperature: 0.7
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
             const aiResponse = await getOpenAI().chat.completions.create({
               model: "gpt-4o",
               messages: [
-                 { role: "system", content: "Siz en sapal? Qaraqalpaq AI ham kopirayting ekspertisiz. Tomendegi PDF tekstinen en tiykar?? ma?l?wmatlard? aj?rat?p al?p, telegram kanal ush?n q?z?ql? post jaz?n (Qaraqalpaq tilinde). Emojiler qos?n." },
+                 { role: "system", content: "Siz eń sapalı Qaraqalpaq tiliniń jasalma intellekt hám kopirayting ekspertisiz. Tómendegi PDF tekstinen eń tiykarǵı maǵlıwmatlardı ajıratıp alıp, telegram kanal ushın qızıqlı post jazıń. ESKERTIW: 1. Ózbek yáki Qazaq tillerindegi sózlerdi aralastırmań! Tek ǵana taza Qaraqalpaq tilinde jazıń. 2. Mısal ushın: 'uchun' emes 'ushın', 'bilan' emes 'menen', 'va' emes 'hám', 'yoki' emes 'yamasa', 'qiling' emes 'qılıń'. 3. Grammatika hám jalǵawlardı durıs qollanıń (-nıń, -niń, -ǵa, -ge). 4. Tábiyiy adam jazǵanday bolsın. 5. Tómengine avtor atın jazbań." },
                  { role: "user", content: textContent }
               ],
               temperature: 0.7
@@ -126,3 +126,4 @@ export async function POST(req: Request) {
     return new NextResponse("Error", { status: 500 });
   }
 }
+
