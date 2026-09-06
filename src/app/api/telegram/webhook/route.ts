@@ -12,19 +12,24 @@ export async function POST(req: Request) {
        ctx.reply(`Salawmatasiz ba! Siziń ID'ińiz: ${ctx.from.id}\nProekt admini ekenligińizdi tastıyıqlaw ushın usı ID'di Vercel'ge TELEGRAM_ADMIN_ID dep qosıń.`);
     });
 
-    bot.on("text", async (ctx) => {
+    bot.on("message", async (ctx: any) => {
+       // Ignore documents here since we handle them below
+       if (ctx.message.document) return;
+
        if (process.env.TELEGRAM_ADMIN_ID && ctx.from.id.toString() !== process.env.TELEGRAM_ADMIN_ID) {
            return ctx.reply("Sizge ruqsat joq.");
        }
        
-       const messageText = ctx.message.text;
-       const loadingMsg = await ctx.reply("? Awdar?l?p at?r ham analizlenip at?r...");
+       const messageText = ctx.message.text || ctx.message.caption;
+       if (!messageText) return ctx.reply("Tekst yamasa PDF jiberiń.");
+
+       const loadingMsg = await ctx.reply("⏳ Awdarılıp atır...");
        
        try {
            const response = await getOpenAI().chat.completions.create({
               model: "gpt-4o",
               messages: [
-                 { role: "system", content: "Siz en sapal? Qaraqalpaq AI ham kopirayting ekspertisiz. Tomendegi tekstti Qaraqalpaq tiline en joqar? darejede, q?z?ql? etip awdar?n yamasa qayta jaz?n (rewrite). Emojiler qos?n. Teksttin tomengi ja??na heshqanday avtor yaki kanal at?n jazban." },
+                 { role: "system", content: "Siz eń sapalı Qaraqalpaq AI hám kopirayting ekspertisiz. Tómendegi tekstti Qaraqalpaq tiline eń joqarı dárejede, qızıqlı etip awdarıń yamasa qayta jazıń (rewrite). Emojiler qosıń. Teksttiń tómengi jaǵına heshqanday avtor yaki kanal atın jazbań." },
                  { role: "user", content: messageText }
               ],
               temperature: 0.7
@@ -38,12 +43,12 @@ export async function POST(req: Request) {
            await ctx.reply(translated, {
                parse_mode: "HTML",
                ...Markup.inlineKeyboard([
-                   Markup.button.callback("?? Kanal?a taslaw", "publish_post"),
-                   Markup.button.callback("? Biykar etiw", "cancel_post")
+                   Markup.button.callback("🚀 Kanalǵa taslaw", "publish_post"),
+                   Markup.button.callback("❌ Biykar etiw", "cancel_post")
                ])
            });
        } catch(e) {
-           await ctx.reply("? Qatelik juz berdi.");
+           await ctx.reply("❌ Qátelik júz berdi.");
        }
     });
     
