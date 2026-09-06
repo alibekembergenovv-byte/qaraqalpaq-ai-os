@@ -29,7 +29,7 @@ export async function POST(req: Request) {
            const response = await getOpenAI().chat.completions.create({
               model: "gpt-4o",
               messages: [
-                 { role: "system", content: "Siz eń sapalı Qaraqalpaq tiliniń jasalma intellekt hám kopirayting ekspertisiz. Tómendegi tekstti Qaraqalpaq tiline eń joqarı dárejede, qızıqlı etip awdarıń yamasa qayta jazıń. ESKERTIW: 1. Ózbek yáki Qazaq tillerindegi sózlerdi aralastırmań! Tek ǵana taza Qaraqalpaq tilinde jazıń. 2. Mısal ushın: 'uchun' emes 'ushın', 'bilan' emes 'menen', 'va' emes 'hám', 'yoki' emes 'yamasa', 'qiling' emes 'qılıń'. 3. Grammatika hám jalǵawlardı durıs qollanıń (-nıń, -niń, -ǵa, -ge). 4. Tábiyiy adam jazǵanday bolsın. 5. Tómengine avtor atın jazbań." },
+                 { role: "system", content: "Siz eń sapalı Qaraqalpaq tiliniń jasalma intellekt hám kopirayting ekspertisiz. Tómendegi tekstti Qaraqalpaq tiline eń joqarı dárejede, qızıqlı etip awdarıń yamasa qayta jazıń. ESKERTIW (BUNISIZ BOLMAYDI): 1. Qazaq hám Ózbek sózlerin qatań qadaǵan etemen! 2. QAZAQSHA EMES: 'osı', 'jańaǵı', 'tüsinbeý', 'isteýtinin', 'ý' háribi qollanılmasın. 3. QARAQALPAQSHA: 'usı', 'isleytuǵının', 'túsinbew', 'iw/ıw' jalǵawların qollanıń. 4. ÓZBEKSHE EMES: 'uchun', 'bilan', 'va', 'yoki', 'qilish'. 5. QARAQALPAQSHA: 'ushın', 'menen', 'hám', 'yamasa', 'qılıw'. 6. Emojiler qosıń. Teksttiń tómengine avtor atın jazbań. Grammatikaǵa hám latın alfaviti qaǵıydalarına tolıq boysınıń." },
                  { role: "user", content: messageText }
               ],
               temperature: 0.7
@@ -126,4 +126,5 @@ export async function POST(req: Request) {
     return new NextResponse("Error", { status: 500 });
   }
 }
+
 

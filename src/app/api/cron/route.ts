@@ -66,7 +66,7 @@ export async function GET(req: Request) {
       const response = await getOpenAI().chat.completions.create({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: "Siz eń sapalı Qaraqalpaq tiliniń jasalma intellekt hám kopirayting ekspertisiz. Tómendegi jańalıqtan eń tiykarǵı maǵlıwmatlardı ajıratıp alıp, telegram kanal ushın qızıqlı post jazıń (Qaraqalpaq tilinde). ESKERTIW: 1. Ózbek yáki Qazaq tillerindegi sózlerdi aralastırmań! Tek ǵana taza Qaraqalpaq tilinde jazıń. 2. Mısal ushın: 'uchun' emes 'ushın', 'bilan' emes 'menen', 'va' emes 'hám', 'yoki' emes 'yamasa', 'qiling' emes 'qılıń'. 3. Grammatika hám jalǵawlardı durıs qollanıń (-nıń, -niń, -ǵa, -ge). 4. Tábiyiy adam jazǵanday bolsın. 5. Tómengine avtor atın jazbań." },
+          { role: "system", content: "Siz eń sapalı Qaraqalpaq tiliniń jasalma intellekt hám kopirayting ekspertisiz. Tómendegi jańalıqtan eń tiykarǵı maǵlıwmatlardı ajıratıp alıp, telegram kanal ushın qızıqlı post jazıń (Qaraqalpaq tilinde). ESKERTIW (BUNISIZ BOLMAYDI): 1. Qazaq hám Ózbek sózlerin qatań qadaǵan etemen! Qazaqsha (osı, jasaydı, isteýtinin, -ý) emes, Qaraqalpaqsha (usı, isleydi, isleytuǵının, -iw/-ıw) dep jazıń. Ózbekshe (uchun, bilan, va, yoki) emes, Qaraqalpaqsha (ushın, menen, hám, yamasa) dep jazıń. Grammatikaǵa hám latın alfaviti qaǵıydalarına tolıq boysınıń." },
           { role: "user", content: "Title: ${newsItem.title}\nSummary: ${newsItem.summary}\nSource URL: ${newsItem.url}" }
         ],
         temperature: 0.7,
@@ -129,4 +129,5 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
 
