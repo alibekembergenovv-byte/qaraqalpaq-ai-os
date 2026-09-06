@@ -1,0 +1,30 @@
+name: Qaraqalpaq AI OS Cron
+
+on:
+  schedule:
+    # 04:00 UTC (9:00 AM) - News
+    - cron: '0 4 * * *'
+    # 07:00 UTC (12:00 PM) - Prompt
+    - cron: '0 7 * * *'
+    # 10:00 UTC (3:00 PM) - News
+    - cron: '0 10 * * *'
+    # 13:00 UTC (6:00 PM) - Prompt
+    - cron: '0 13 * * *'
+    # 15:00 UTC (8:00 PM) - News
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-news-cron:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 4 * * *' || github.event.schedule == '0 10 * * *' || github.event.schedule == '0 15 * * *'
+    steps:
+      - name: Hit News Cron
+        run: curl -s -H "Authorization: Bearer qaraqalpaq_ai_cron_secret_123" "https://qaraqalpaq-ai-os.vercel.app/api/cron?type=news"
+
+  run-prompt-cron:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 7 * * *' || github.event.schedule == '0 13 * * *'
+    steps:
+      - name: Hit Prompt Cron
+        run: curl -s -H "Authorization: Bearer qaraqalpaq_ai_cron_secret_123" "https://qaraqalpaq-ai-os.vercel.app/api/cron?type=prompt"
