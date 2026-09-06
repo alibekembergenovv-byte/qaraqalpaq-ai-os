@@ -50,7 +50,7 @@ export async function GET(req: Request) {
         }
       });
       contentId = content.id;
-      finalCaption = "${generatedText}\n\n?- @alibek_embergenov";
+      finalCaption = `${generatedText}\n\n🤖 @alibek_embergenov`;
 
     } else {
       // NORMAL NEWS LOGIC
@@ -95,7 +95,7 @@ export async function GET(req: Request) {
         data: { status: "CURATED" }
       });
 
-      finalCaption = "${generatedText}\n\n?"- <a href="${newsItem.url}"">Toliq oqiw</a>\n\n?- @alibek_embergenov";
+      finalCaption = `${generatedText}\n\n🔗 <a href="${newsItem.url}">Toliq oqiw</a>\n\n🤖 @alibek_embergenov`;
     }
 
     // PUBLISH TO TELEGRAM
