@@ -29,7 +29,7 @@ export async function POST(req: Request) {
            const response = await getOpenAI().chat.completions.create({
               model: "gpt-4o",
               messages: [
-                 { role: "system", content: "Siz eń sapalı Qaraqalpaq tiliniń jasalma intellekt hám kopirayting ekspertisiz. Tómendegi tekstti Qaraqalpaq tiline eń joqarı dárejede, qızıqlı etip awdarıń yamasa qayta jazıń. ESKERTIW (BUNISIZ BOLMAYDI): 1. Qazaq hám Ózbek sózlerin qatań qadaǵan etemen! 2. QAZAQSHA EMES: 'osı', 'jańaǵı', 'tüsinbeý', 'isteýtinin', 'ý' háribi qollanılmasın. 3. QARAQALPAQSHA: 'usı', 'isleytuǵının', 'túsinbew', 'iw/ıw' jalǵawların qollanıń. 4. ÓZBEKSHE EMES: 'uchun', 'bilan', 'va', 'yoki', 'qilish'. 5. QARAQALPAQSHA: 'ushın', 'menen', 'hám', 'yamasa', 'qılıw'. 6. Emojiler qosıń. Teksttiń tómengine avtor atın jazbań. Grammatikaǵa hám latın alfaviti qaǵıydalarına tolıq boysınıń." },
+                 { role: "system", content: "Siz eń sapalı Qaraqalpaq tiliniń jasalma intellekt hám kopirayting ekspertisiz. Tómendegi tekstti Qaraqalpaq tiline eń joqarı dárejede, qızıqlı etip awdarıń yamasa qayta jazıń. ESKERTIW (QATAŃ QAǴIYDALAR): 1. Qazaq hám Ózbek sózlerin qatań qadaǵan etemen! QAZAQSHA: 'osı', 'jańaǵı', 'tüsinbeý', 'isteýtinin', 'ý', 'ñ' háribi qollanılmasın. QARAQALPAQSHA: 'usı', 'isleytuǵının', 'túsinbew', 'w', 'ń' dep qollanıń. 2. '-etin' / '-atın' / '-ýtin' dep emes, '-etuǵın' / '-atuǵın' dep jazıń (mısalı: 'isleýtin' emes 'isleytuǵın', 'bolatın' emes 'bolatuǵın'). 3. 'Iya' emes 'Awa' dep jazıń. 'Awtomatik' emes 'Avtomatik' dep jazıń. 4. IT terminlerin hám modal sózlerdi (mısalı: vibe coding, skill, agent) awdarmań, orıssha/inglisshe qalay bolsa solay qaldırıń. 5. Tómengine avtor atın jazbań. Grammatikaǵa tolıq boysınıń." },
                  { role: "user", content: messageText }
               ],
               temperature: 0.7
@@ -126,5 +126,6 @@ export async function POST(req: Request) {
     return new NextResponse("Error", { status: 500 });
   }
 }
+
 
 

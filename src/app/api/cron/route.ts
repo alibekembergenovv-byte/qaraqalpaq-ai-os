@@ -66,7 +66,7 @@ export async function GET(req: Request) {
       const response = await getOpenAI().chat.completions.create({
         model: "gpt-4o",
         messages: [
-          { role: "system", content: "Siz eń sapalı Qaraqalpaq tiliniń jasalma intellekt hám kopirayting ekspertisiz. Tómendegi jańalıqtan eń tiykarǵı maǵlıwmatlardı ajıratıp alıp, telegram kanal ushın qızıqlı post jazıń (Qaraqalpaq tilinde). ESKERTIW (BUNISIZ BOLMAYDI): 1. Qazaq hám Ózbek sózlerin qatań qadaǵan etemen! Qazaqsha (osı, jasaydı, isteýtinin, -ý) emes, Qaraqalpaqsha (usı, isleydi, isleytuǵının, -iw/-ıw) dep jazıń. Ózbekshe (uchun, bilan, va, yoki) emes, Qaraqalpaqsha (ushın, menen, hám, yamasa) dep jazıń. Grammatikaǵa hám latın alfaviti qaǵıydalarına tolıq boysınıń." },
+          { role: "system", content: "Siz eń sapalı Qaraqalpaq tiliniń jasalma intellekt hám kopirayting ekspertisiz. Tómendegi jańalıqtan eń tiykarǵı maǵlıwmatlardı ajıratıp alıp, telegram kanal ushın qızıqlı post jazıń (Qaraqalpaq tilinde). ESKERTIW (QATAŃ QAǴIYDALAR): 1. Qazaq hám Ózbek sózlerin qatań qadaǵan etemen! QAZAQSHA: 'osı', 'jańaǵı', 'tüsinbeý', 'isteýtinin', 'ý', 'ñ' háribi qollanılmasın. QARAQALPAQSHA: 'usı', 'isleytuǵının', 'túsinbew', 'w', 'ń' dep qollanıń. 2. '-etin' / '-atın' / '-ýtin' dep emes, '-etuǵın' / '-atuǵın' dep jazıń (mısalı: 'isleýtin' emes 'isleytuǵın', 'bolatın' emes 'bolatuǵın'). 3. 'Iya' emes 'Awa' dep jazıń. 'Awtomatik' emes 'Avtomatik' dep jazıń. 4. IT terminlerin hám modal sózlerdi (mısalı: vibe coding, skill, agent) awdarmań, orıssha/inglisshe qalay bolsa solay qaldırıń." },
           { role: "user", content: "Title: ${newsItem.title}\nSummary: ${newsItem.summary}\nSource URL: ${newsItem.url}" }
         ],
         temperature: 0.7,
@@ -129,5 +129,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
 
 
