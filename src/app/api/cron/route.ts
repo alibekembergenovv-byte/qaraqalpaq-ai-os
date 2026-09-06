@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   try {
     // 1. Check if auth header is valid (Vercel Cron secure)
     const authHeader = req.headers.get('authorization');
-    if (process.env.CRON_SECRET && authHeader !== "Bearer ${process.env.CRON_SECRET}") {
+    if (authHeader !== `Bearer qaraqalpaq_ai_cron_secret_123`) {
       if (process.env.NODE_ENV === 'production') {
         return new NextResponse('Unauthorized', { status: 401 });
       }
