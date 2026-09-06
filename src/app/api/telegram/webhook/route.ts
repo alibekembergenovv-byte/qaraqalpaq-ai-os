@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { Telegraf, Markup } from "telegraf";
 import { getOpenAI } from "@/lib/ai/openai";
-const pdfParse = require("pdf-parse");
-
 export async function POST(req: Request) {
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -64,6 +62,7 @@ export async function POST(req: Request) {
             const fileLink = await ctx.telegram.getFileLink(doc.file_id);
             const response = await fetch(fileLink.toString());
             const arrayBuffer = await response.arrayBuffer();
+            const pdfParse = require("pdf-parse");
             const data = await pdfParse(Buffer.from(arrayBuffer));
             const textContent = data.text.substring(0, 10000); 
             
