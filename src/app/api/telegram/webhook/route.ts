@@ -31,16 +31,126 @@ export async function POST(req: Request) {
     
     const bot = new Telegraf(botToken);
     
-    bot.start((ctx) => {
-       ctx.reply(`Salawmatasiz ba! Siziń ID'ińiz: ${ctx.from.id}\nProekt admini ekenligińizdi tastıyıqlaw ushın usı ID'di Vercel'ge TELEGRAM_ADMIN_ID dep qosıń.`);
+    // Middleware for force subscription check
+    const checkSubscription = async (ctx: any, next: () => Promise<void>) => {
+        const channelId = process.env.TELEGRAM_CHANNEL_ID;
+        if (!channelId) return next();
+
+        // Skip check for admin
+        if (process.env.TELEGRAM_ADMIN_ID && ctx.from?.id.toString() === process.env.TELEGRAM_ADMIN_ID) {
+            return next();
+        }
+
+        try {
+            const member = await ctx.telegram.getChatMember(channelId, ctx.from.id);
+            if (['creator', 'administrator', 'member'].includes(member.status)) {
+                return next();
+            } else {
+                await ctx.reply(
+                    "Botttan tolıq paydalanıw ushın kanalımızǵa aǵza bolıwıńız kerek! 👇",
+                    Markup.inlineKeyboard([
+                        [Markup.button.url("Kanalǵa aǵza bolıw", "https://t.me/alibek_embergenov")],
+                        [Markup.button.callback("✅ Aǵza boldım", "check_sub")]
+                    ])
+                );
+            }
+        } catch (error) {
+            console.error("Subscription check error:", error);
+            // If bot can't check (e.g. not an admin in channel), allow to pass
+            return next();
+        }
+    };
+
+    bot.action("check_sub", async (ctx: any) => {
+        const channelId = process.env.TELEGRAM_CHANNEL_ID;
+        if (!channelId) return ctx.answerCbQuery("Kanal sazlanbaǵan.");
+
+        try {
+            const member = await ctx.telegram.getChatMember(channelId, ctx.from.id);
+            if (['creator', 'administrator', 'member'].includes(member.status)) {
+                await ctx.deleteMessage();
+                await ctx.reply("Raxmet! Endi bottan tolıq paydalana alasız. \n\nBuyrıqlar:\n/suret <tekst> - AI arqalı suret jasaw\n/soraw <tekst> - AI-den soraw soraw");
+                await ctx.answerCbQuery("Aǵzalıq tastıyıqlandı!");
+            } else {
+                await ctx.answerCbQuery("Siz ele kanalǵa aǵza bolmadıńız!", { show_alert: true });
+            }
+        } catch (error) {
+            await ctx.answerCbQuery("Qátelik júz berdi.");
+        }
+    });
+
+    bot.start(checkSubscription, (ctx) => {
+       if (process.env.TELEGRAM_ADMIN_ID && ctx.from.id.toString() === process.env.TELEGRAM_ADMIN_ID) {
+           ctx.reply(`Salawmatasiz ba! Siziń ID'ińiz: ${ctx.from.id}\nProekt adminisiz. Post jaratıw ushın tekst yamasa PDF jiberiń.`);
+       } else {
+           ctx.reply(`👋 Salawmatasiz ba!\n\nBul bot AI (Jasalma Intellekt) múmkinshiliklerinen paydalanıwǵa járdem beredi.\n\n🎁 **Sizge arnawlı sıylıq: AI tarawındaǵı eń kerekli 5 keńes:**\n1. AI - bul tek sayt emes, ol siziń jeke járdemshińiz. Úyreniwge erinbeń.\n2. Prompt (buyrıq) beriwdi úyreniń: Qansha anıq jazsańız, sonsha jaqsı juwap alasız.\n3. ChatGPT, Claude, hám Gemini-di salıstırıp paydalanıń.\n4. AI arqalı suret yamasa video jaratıw (Kreativlik) keleshektiń eń kerekli kásibi boladı.\n5. @alibek_embergenov kanalın oqıp, jańalıqlardan xabardar bolıń.\n\n🤖 **Bot buyrıqları:**\n/suret <tekst> - AI arqalı suret jasaw\n/soraw <tekst> - AI-ge soraw beriw`);
+       }
+    });
+
+    bot.command('suret', checkSubscription, async (ctx) => {
+        const prompt = ctx.message.text.replace('/suret', '').trim();
+        if (!prompt) {
+            return ctx.reply("Iltimas, suret qanday bolıwı kerekligin jazıń.\nMısalı: /suret Qaraqalpaqstan tábiyatı, aqshom waqtı");
+        }
+        const loadingMsg = await ctx.reply("🎨 Suret jaratılmaqta, kútip turıń...");
+        try {
+            const response = await getOpenAI().chat.completions.create({
+                model: "gpt-4o",
+                messages: [
+                    { role: "system", content: "You are an expert prompt engineer. Translate the user's description (written in Karakalpak or Russian/Uzbek) into a highly detailed English image generation prompt for a text-to-image AI. Make it photorealistic, 8k, detailed." },
+                    { role: "user", content: prompt }
+                ],
+                temperature: 0.7
+            });
+            const englishPrompt = response.choices[0].message.content || prompt;
+            const encodedPrompt = encodeURIComponent(englishPrompt);
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true`;
+
+            await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
+            await ctx.replyWithPhoto(imageUrl, {
+                caption: `✨ Jaratılǵan suret\n\n📌 <b>Kanalımız:</b> @alibek_embergenov`,
+                parse_mode: 'HTML'
+            });
+        } catch (error) {
+            await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
+            await ctx.reply("❌ Suret jaratıwda qátelik júz berdi.");
+        }
+    });
+
+    bot.command('soraw', checkSubscription, async (ctx) => {
+        const prompt = ctx.message.text.replace('/soraw', '').trim();
+        if (!prompt) {
+            return ctx.reply("Iltimas, sorawıńızdı jazıń.\nMısalı: /soraw Jasalma intellekt degen ne?");
+        }
+        const loadingMsg = await ctx.reply("🤔 Oylanıp atırman...");
+        try {
+            const response = await getOpenAI().chat.completions.create({
+                model: "gpt-4o",
+                messages: [
+                    { role: "system", content: "Siz eń sapalı Qaraqalpaq tilinde juwap beretuǵın aqıllı AI járdemshisiz. Paydalanıwshınıń sorawına tolıq, túsinikli hám paydalı juwap beriń. Qazaq yamasa Ózbek sózlerin qollanbań. Taza Qaraqalpaq tilinde jazıń (usı, -etuǵın, Awa)." },
+                    { role: "user", content: prompt }
+                ],
+                temperature: 0.7
+            });
+            let replyText = response.choices[0].message.content || "";
+            replyText = cleanQaraqalpaq(replyText);
+
+            await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
+            await ctx.reply(replyText + "\n\n🤖 @alibek_embergenov");
+        } catch (error) {
+            await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
+            await ctx.reply("❌ Juwap tabıwda qátelik júz berdi.");
+        }
     });
 
     bot.on("message", async (ctx: any) => {
        // Ignore documents here since we handle them below
        if (ctx.message.document) return;
+       // Ignore explicit bot commands as they are handled above
+       if (ctx.message.text?.startsWith('/')) return;
 
        if (process.env.TELEGRAM_ADMIN_ID && ctx.from.id.toString() !== process.env.TELEGRAM_ADMIN_ID) {
-           return ctx.reply("Sizge ruqsat joq.");
+           return ctx.reply("Sizge botqa tuwrıdan-tuwrı xat jazıwǵa ruqsat joq. /soraw yamasa /suret buyrıqlarınan paydalanıń.");
        }
        
        const messageText = ctx.message.text || ctx.message.caption;
