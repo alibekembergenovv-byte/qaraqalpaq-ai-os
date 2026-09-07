@@ -5,6 +5,27 @@ import { Telegraf } from "telegraf";
 
 export const maxDuration = 60; // 60 seconds limit on Vercel Hobby
 
+function cleanQaraqalpaq(text: string) {
+    if (!text) return "";
+    return text
+        .replace(/ý/g, 'y')
+        .replace(/Ý/g, 'Y')
+        .replace(/ñ/g, 'ń')
+        .replace(/Ñ/g, 'Ń')
+        .replace(/ў/g, 'w')
+        .replace(/Ў/g, 'W')
+        .replace(/ğ/g, 'ǵ')
+        .replace(/Ğ/g, 'Ǵ')
+        .replace(/kompýuter/gi, 'kompyuter')
+        .replace(/\bAqıw\b/gi, 'Biyapul')
+        .replace(/\b(Iya|Iye|Iá)\b/gi, 'Awa')
+        .replace(/(\w+)etin\b/g, '$1etuǵın')
+        .replace(/(\w+)atın\b/g, '$1atuǵın')
+        .replace(/(\w+)ytin\b/g, '$1ytuǵın')
+        .replace(/(\w+)ýtin\b/g, '$1ytuǵın')
+        .replace(/(\w+)ytın\b/g, '$1ytuǵın')
+        .replace(/\bosı\b/gi, 'usı');
+}
 export async function GET(req: Request) {
   try {
     // 1. Check if auth header is valid (Vercel Cron secure)
@@ -50,7 +71,80 @@ export async function GET(req: Request) {
         }
       });
       contentId = content.id;
-      finalCaption = `${generatedText}\n\n🤖 @alibek_embergenov`;
+      finalCaption = `import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { getOpenAI } from "@/lib/ai/openai";
+import { Telegraf } from "telegraf";
+
+export const maxDuration = 60; // 60 seconds limit on Vercel Hobby
+
+function cleanQaraqalpaq(text: string) {
+    if (!text) return "";
+    return text
+        .replace(/ý/g, 'y')
+        .replace(/Ý/g, 'Y')
+        .replace(/ñ/g, 'ń')
+        .replace(/Ñ/g, 'Ń')
+        .replace(/ў/g, 'w')
+        .replace(/Ў/g, 'W')
+        .replace(/ğ/g, 'ǵ')
+        .replace(/Ğ/g, 'Ǵ')
+        .replace(/kompýuter/gi, 'kompyuter')
+        .replace(/\bAqıw\b/gi, 'Biyapul')
+        .replace(/\b(Iya|Iye|Iá)\b/gi, 'Awa')
+        .replace(/(\w+)etin\b/g, '$1etuǵın')
+        .replace(/(\w+)atın\b/g, '$1atuǵın')
+        .replace(/(\w+)ytin\b/g, '$1ytuǵın')
+        .replace(/(\w+)ýtin\b/g, '$1ytuǵın')
+        .replace(/(\w+)ytın\b/g, '$1ytuǵın')
+        .replace(/\bosı\b/gi, 'usı');
+}
+export async function GET(req: Request) {
+  try {
+    // 1. Check if auth header is valid (Vercel Cron secure)
+    const authHeader = req.headers.get('authorization');
+    if (authHeader !== `Bearer qaraqalpaq_ai_cron_secret_123`) {
+      if (process.env.NODE_ENV === 'production') {
+        return new NextResponse('Unauthorized', { status: 401 });
+      }
+    }
+
+    const url = new URL(req.url);
+    const type = url.searchParams.get("type") || "news";
+
+    let generatedText = "";
+    let imageUrl = "";
+    let finalCaption = "";
+    let contentId = "";
+    
+    if (type === "prompt") {
+      // B JOLI: AI OZ OYLAP TAWIP PROMPT TIP JAZADI (RSS KEREK EMES)
+      const response = await getOpenAI().chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: "Siz eń sapalı Qaraqalpaq tiliniń jasalma intellekt hám kopirayting ekspertisiz. ChatGPT ushın qızıqlı hám paydalı Qaraqalpaq tilinde 'Prompt layfxak' yáki qollanıw usılların oylap tabıń. ESKERTIW: 1. Ózbek yáki Qazaq tillerindegi sózlerdi aralastırmań! Tek ǵana taza Qaraqalpaq tilinde jazıń. 2. Mısal ushın: 'uchun' emes 'ushın', 'bilan' emes 'menen', 'va' emes 'hám', 'yoki' emes 'yamasa', 'qiling' emes 'qılıń'. 3. Grammatika hám jalǵawlardı durıs qollanıń (-nıń, -niń, -ǵa, -ge). 4. Tábiyiy adam jazǵanday bolsın. 5. Tómengine avtor atın jazbań." },
+          { role: "user", content: "Ozin qiyalannan ChatGPT yamasa AI tarmaqlari ushin jada paydali, qiziqli bir 'Prompt secret' (Layfxak) oylap tap ham oni Qaraqalpaq tilinde Telegram post qilib jaz. Posttin uzinligi 700 harripten aspasin. Emojiler qos. Posttin aqirina hesh qanday silteme (url) qospa." }
+        ],
+        temperature: 0.9,
+      });
+
+      generatedText = response.choices[0].message.content || "";
+      generatedText = generatedText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
+      
+      const encodedPrompt = encodeURIComponent("AI glowing brain, futuristic prompt engineering, glowing text hologram, highly detailed, cyberpunk style, neon lights");
+      imageUrl = "https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true";
+
+      const content = await prisma.content.create({
+        data: {
+          title: "AI Prompt Layfxak",
+          body: generatedText,
+          imageUrl: imageUrl,
+          format: "TELEGRAM_POST",
+          status: "APPROVED"
+        }
+      });
+      contentId = content.id;
+      {cleanQaraqalpaq(generatedText)}\n\n🤖 @alibek_embergenov`;
 
     } else {
       // NORMAL NEWS LOGIC
@@ -129,6 +223,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
 
 
 

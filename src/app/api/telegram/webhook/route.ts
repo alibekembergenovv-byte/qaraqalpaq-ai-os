@@ -1,6 +1,30 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { Telegraf, Markup } from "telegraf";
 import { getOpenAI } from "@/lib/ai/openai";
+const pdfParse = require("pdf-parse");
+
+function cleanQaraqalpaq(text: string) {
+    if (!text) return "";
+    return text
+        .replace(/ý/g, 'y')
+        .replace(/Ý/g, 'Y')
+        .replace(/ñ/g, 'ń')
+        .replace(/Ñ/g, 'Ń')
+        .replace(/ў/g, 'w')
+        .replace(/Ў/g, 'W')
+        .replace(/ğ/g, 'ǵ')
+        .replace(/Ğ/g, 'Ǵ')
+        .replace(/kompýuter/gi, 'kompyuter')
+        .replace(/\bAqıw\b/gi, 'Biyapul')
+        .replace(/\b(Iya|Iye|Iá)\b/gi, 'Awa')
+        .replace(/(\w+)etin\b/g, '$1etuǵın')
+        .replace(/(\w+)atın\b/g, '$1atuǵın')
+        .replace(/(\w+)ytin\b/g, '$1ytuǵın')
+        .replace(/(\w+)ýtin\b/g, '$1ytuǵın')
+        .replace(/(\w+)ytın\b/g, '$1ytuǵın')
+        .replace(/\bosı\b/gi, 'usı');
+}
+
 export async function POST(req: Request) {
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -36,6 +60,7 @@ export async function POST(req: Request) {
            });
            
            let translated = response.choices[0].message.content || "";
+           translated = cleanQaraqalpaq(translated);
            translated = translated.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
            
            await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
@@ -81,6 +106,7 @@ export async function POST(req: Request) {
             });
             
             let translated = aiResponse.choices[0].message.content || "";
+            translated = cleanQaraqalpaq(translated);
             translated = translated.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
             
             await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
