@@ -26,6 +26,7 @@ function cleanQaraqalpaq(text: string) {
         .replace(/(\w+)ytın\b/g, '$1ytuǵın')
         .replace(/\bosı\b/gi, 'usı');
 }
+
 export async function GET(req: Request) {
   try {
     // 1. Check if auth header is valid (Vercel Cron secure)
