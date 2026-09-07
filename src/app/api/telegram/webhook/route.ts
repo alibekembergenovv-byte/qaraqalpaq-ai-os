@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { Telegraf, Markup } from "telegraf";
 import { getOpenAI } from "@/lib/ai/openai";
-const pdfParse = require("pdf-parse");
 
 function cleanQaraqalpaq(text: string) {
     if (!text) return "";
