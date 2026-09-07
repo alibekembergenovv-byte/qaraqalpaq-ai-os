@@ -189,7 +189,7 @@ export default function ContentEditorPage(props: { params: Promise<{ id: string 
               )}
               <div className="whitespace-pre-wrap text-[15px] font-sans leading-relaxed px-2 pb-1 pt-1">
                 {content.split('\n').map((line, i) => {
-                  let parsedLine = line.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+                  const parsedLine = line.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
                   return (
                     <span key={i}>
                       <span dangerouslySetInnerHTML={{ __html: parsedLine }} />
