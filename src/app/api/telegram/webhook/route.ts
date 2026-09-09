@@ -61,36 +61,90 @@ export async function POST(req: Request) {
            let translated = response.choices[0].message.content || "";
            translated = cleanQaraqalpaq(translated);
            translated = translated.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
-           
-           await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
+                      try {
+                await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
+            } catch (_) {}
 
-           const buttons = Markup.inlineKeyboard([
-               Markup.button.callback("🚀 Kanalǵa taslaw", "publish_post"),
-               Markup.button.callback("❌ Biykar etiw", "cancel_post")
-           ]);
-           
-           if (ctx.message.photo) {
-               const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
-               await ctx.replyWithPhoto(fileId, {
-                   caption: translated,
-                   parse_mode: "HTML",
-                   ...buttons
-               });
-           } else if (ctx.message.video) {
-               await ctx.replyWithVideo(ctx.message.video.file_id, {
-                   caption: translated,
-                   parse_mode: "HTML",
-                   ...buttons
-               });
-           } else {
-               await ctx.reply(translated, {
-                   parse_mode: "HTML",
-                   ...buttons
-               });
-           }
-       } catch(e) {
-           await ctx.reply("❌ Qátelik júz berdi.");
-       }
+            const buttons = Markup.inlineKeyboard([
+                Markup.button.callback("🚀 Kanalǵa taslaw", "publish_post"),
+                Markup.button.callback("❌ Biykar etiw", "cancel_post")
+            ]);
+            
+            if (ctx.message.photo) {
+                const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+                if (translated.length <= 1024) {
+                    try {
+                        await ctx.replyWithPhoto(fileId, {
+                            caption: translated,
+                            parse_mode: "HTML",
+                            ...buttons
+                        });
+                    } catch (photoHtmlErr) {
+                        await ctx.replyWithPhoto(fileId, {
+                            caption: translated.replace(/<[^>]*>/g, ''),
+                            ...buttons
+                        });
+                    }
+                } else {
+                    await ctx.replyWithPhoto(fileId);
+                    try {
+                        await ctx.reply(translated, {
+                            parse_mode: "HTML",
+                            ...buttons
+                        });
+                    } catch (textHtmlErr) {
+                        await ctx.reply(translated.replace(/<[^>]*>/g, ''), {
+                            ...buttons
+                        });
+                    }
+                }
+            } else if (ctx.message.video) {
+                const fileId = ctx.message.video.file_id;
+                if (translated.length <= 1024) {
+                    try {
+                        await ctx.replyWithVideo(fileId, {
+                            caption: translated,
+                            parse_mode: "HTML",
+                            ...buttons
+                        });
+                    } catch (videoHtmlErr) {
+                        await ctx.replyWithVideo(fileId, {
+                            caption: translated.replace(/<[^>]*>/g, ''),
+                            ...buttons
+                        });
+                    }
+                } else {
+                    await ctx.replyWithVideo(fileId);
+                    try {
+                        await ctx.reply(translated, {
+                            parse_mode: "HTML",
+                            ...buttons
+                        });
+                    } catch (textHtmlErr) {
+                        await ctx.reply(translated.replace(/<[^>]*>/g, ''), {
+                            ...buttons
+                        });
+                    }
+                }
+            } else {
+                try {
+                    await ctx.reply(translated, {
+                        parse_mode: "HTML",
+                        ...buttons
+                    });
+                } catch (textHtmlErr) {
+                    await ctx.reply(translated.replace(/<[^>]*>/g, ''), {
+                        ...buttons
+                    });
+                }
+            }
+        } catch(e: any) {
+            console.error("Message handling error:", e);
+            try {
+                await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
+            } catch (_) {}
+            await ctx.reply("❌ Qátelik júz berdi: " + (e?.message || "Námálim qátelik"));
+        }
     });
     
     bot.on("document", async (ctx) => {
@@ -125,17 +179,31 @@ export async function POST(req: Request) {
             translated = cleanQaraqalpaq(translated);
             translated = translated.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
             
-            await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
+            try {
+                await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
+            } catch (_) {}
             
-            await ctx.reply(translated, {
-               parse_mode: "HTML",
-               ...Markup.inlineKeyboard([
-                   Markup.button.callback("?? Kanal?a taslaw", "publish_post"),
-                   Markup.button.callback("? Biykar etiw", "cancel_post")
-               ])
-            });
+            try {
+                await ctx.reply(translated, {
+                   parse_mode: "HTML",
+                   ...Markup.inlineKeyboard([
+                       Markup.button.callback("🚀 Kanalǵa taslaw", "publish_post"),
+                       Markup.button.callback("❌ Biykar etiw", "cancel_post")
+                   ])
+                });
+            } catch (err) {
+                await ctx.reply(translated.replace(/<[^>]*>/g, ''), {
+                   ...Markup.inlineKeyboard([
+                       Markup.button.callback("🚀 Kanalǵa taslaw", "publish_post"),
+                       Markup.button.callback("❌ Biykar etiw", "cancel_post")
+                   ])
+                });
+            }
         } catch(e: any) {
-            await ctx.reply("? Qatelik: " + e.message);
+            try {
+                await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
+            } catch (_) {}
+            await ctx.reply("❌ Qátelik: " + (e?.message || "Námálim qátelik"));
         }
     });
 
@@ -146,26 +214,75 @@ export async function POST(req: Request) {
        const cbMsg = ctx.callbackQuery.message as any;
        const text = cbMsg?.text || cbMsg?.caption;
        
-       if (text || cbMsg.photo || cbMsg.video) {
-           const finalCaption = text ? `${text}\n\n🤖- @alibek_embergenov` : '';
+       if (text || cbMsg?.photo || cbMsg?.video) {
+           const finalCaption = text ? `${text}\n\n🤖 @alibek_embergenov` : '';
 
-           if (cbMsg.photo) {
-               const fileId = cbMsg.photo[cbMsg.photo.length - 1].file_id;
-               await ctx.telegram.sendPhoto(channelId, fileId, { caption: finalCaption, parse_mode: "HTML" });
-               await ctx.editMessageCaption(text + "\n\n✅ KANALǴA JIBERILDI!", { parse_mode: "HTML" });
-           } else if (cbMsg.video) {
-               await ctx.telegram.sendVideo(channelId, cbMsg.video.file_id, { caption: finalCaption, parse_mode: "HTML" });
-               await ctx.editMessageCaption(text + "\n\n✅ KANALǴA JIBERILDI!", { parse_mode: "HTML" });
-           } else if (text) {
-               await ctx.telegram.sendMessage(channelId, finalCaption, { parse_mode: "HTML" });
-               await ctx.editMessageText(text + "\n\n✅ KANALǴA JIBERILDI!", { parse_mode: "HTML" });
+           try {
+               if (cbMsg?.photo) {
+                   const fileId = cbMsg.photo[cbMsg.photo.length - 1].file_id;
+                   if (finalCaption.length <= 1024) {
+                       try {
+                           await ctx.telegram.sendPhoto(channelId, fileId, { caption: finalCaption, parse_mode: "HTML" });
+                       } catch (e) {
+                           await ctx.telegram.sendPhoto(channelId, fileId, { caption: finalCaption.replace(/<[^>]*>/g, '') });
+                       }
+                   } else {
+                       await ctx.telegram.sendPhoto(channelId, fileId);
+                       try {
+                           await ctx.telegram.sendMessage(channelId, finalCaption, { parse_mode: "HTML" });
+                       } catch (e) {
+                           await ctx.telegram.sendMessage(channelId, finalCaption.replace(/<[^>]*>/g, ''));
+                       }
+                   }
+                   try {
+                       await ctx.editMessageCaption((text || "") + "\n\n✅ KANALǴA JIBERILDI!");
+                   } catch (_) {}
+               } else if (cbMsg?.video) {
+                   const fileId = cbMsg.video.file_id;
+                   if (finalCaption.length <= 1024) {
+                       try {
+                           await ctx.telegram.sendVideo(channelId, fileId, { caption: finalCaption, parse_mode: "HTML" });
+                       } catch (e) {
+                           await ctx.telegram.sendVideo(channelId, fileId, { caption: finalCaption.replace(/<[^>]*>/g, '') });
+                       }
+                   } else {
+                       await ctx.telegram.sendVideo(channelId, fileId);
+                       try {
+                           await ctx.telegram.sendMessage(channelId, finalCaption, { parse_mode: "HTML" });
+                       } catch (e) {
+                           await ctx.telegram.sendMessage(channelId, finalCaption.replace(/<[^>]*>/g, ''));
+                       }
+                   }
+                   try {
+                       await ctx.editMessageCaption((text || "") + "\n\n✅ KANALǴA JIBERILDI!");
+                   } catch (_) {}
+               } else if (text) {
+                   try {
+                       await ctx.telegram.sendMessage(channelId, finalCaption, { parse_mode: "HTML" });
+                   } catch (e) {
+                       await ctx.telegram.sendMessage(channelId, finalCaption.replace(/<[^>]*>/g, ''));
+                   }
+                   try {
+                       await ctx.editMessageText((text || "") + "\n\n✅ KANALǴA JIBERILDI!");
+                   } catch (_) {}
+               }
+               await ctx.answerCbQuery("Kanalǵa tabıslı jiberildi!");
+           } catch (pubErr: any) {
+               console.error("Publish error:", pubErr);
+               await ctx.answerCbQuery("Qátelik: " + (pubErr?.message || ""));
            }
-           await ctx.answerCbQuery("Kanalǵa tabıslı jiberildi!");
        }
     });
     
     bot.action("cancel_post", async (ctx) => {
-       await ctx.editMessageText("? Biykar etildi.");
+       try {
+           const cbMsg = ctx.callbackQuery.message as any;
+           if (cbMsg?.photo || cbMsg?.video) {
+               await ctx.editMessageCaption("❌ Biykar etildi.");
+           } else {
+               await ctx.editMessageText("❌ Biykar etildi.");
+           }
+       } catch (_) {}
        await ctx.answerCbQuery("Biykar etildi");
     });
     
