@@ -25,13 +25,32 @@ export async function POST(req: Request) {
       .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
 
     if (content.imageUrl && content.imageUrl.trim() !== "") {
-      telegramUrl = `https://api.telegram.org/bot${botToken}/sendPhoto`;
-      bodyData = {
-        chat_id: channelId,
-        photo: content.imageUrl.trim(),
-        caption: parsedBody,
-        parse_mode: "HTML"
-      };
+      if (parsedBody.length > 1024) {
+        // Send photo without caption first
+        await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: channelId,
+            photo: content.imageUrl.trim()
+          })
+        });
+        // Then send text
+        telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+        bodyData = {
+          chat_id: channelId,
+          text: parsedBody,
+          parse_mode: "HTML"
+        };
+      } else {
+        telegramUrl = `https://api.telegram.org/bot${botToken}/sendPhoto`;
+        bodyData = {
+          chat_id: channelId,
+          photo: content.imageUrl.trim(),
+          caption: parsedBody,
+          parse_mode: "HTML"
+        };
+      }
     } else {
       bodyData.text = parsedBody;
     }

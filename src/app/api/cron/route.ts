@@ -130,10 +130,20 @@ export async function GET(req: Request) {
 
     const bot = new Telegraf(botToken);
     
-    await bot.telegram.sendPhoto(channelId, imageUrl, {
-      caption: finalCaption,
-      parse_mode: "HTML"
-    });
+    try {
+      if (finalCaption.length > 1024) {
+        await bot.telegram.sendPhoto(channelId, imageUrl);
+        await bot.telegram.sendMessage(channelId, finalCaption, { parse_mode: "HTML" });
+      } else {
+        await bot.telegram.sendPhoto(channelId, imageUrl, {
+          caption: finalCaption,
+          parse_mode: "HTML"
+        });
+      }
+    } catch (telegramErr: any) {
+      console.error("Telegram publish error:", telegramErr);
+      return NextResponse.json({ error: telegramErr.message }, { status: 500 });
+    }
 
     await prisma.content.update({
       where: { id: contentId },
