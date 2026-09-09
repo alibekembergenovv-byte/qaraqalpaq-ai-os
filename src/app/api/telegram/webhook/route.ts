@@ -63,14 +63,31 @@ export async function POST(req: Request) {
            translated = translated.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
            
            await ctx.telegram.deleteMessage(ctx.chat.id, loadingMsg.message_id);
+
+           const buttons = Markup.inlineKeyboard([
+               Markup.button.callback("🚀 Kanalǵa taslaw", "publish_post"),
+               Markup.button.callback("❌ Biykar etiw", "cancel_post")
+           ]);
            
-           await ctx.reply(translated, {
-               parse_mode: "HTML",
-               ...Markup.inlineKeyboard([
-                   Markup.button.callback("🚀 Kanalǵa taslaw", "publish_post"),
-                   Markup.button.callback("❌ Biykar etiw", "cancel_post")
-               ])
-           });
+           if (ctx.message.photo) {
+               const fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+               await ctx.replyWithPhoto(fileId, {
+                   caption: translated,
+                   parse_mode: "HTML",
+                   ...buttons
+               });
+           } else if (ctx.message.video) {
+               await ctx.replyWithVideo(ctx.message.video.file_id, {
+                   caption: translated,
+                   parse_mode: "HTML",
+                   ...buttons
+               });
+           } else {
+               await ctx.reply(translated, {
+                   parse_mode: "HTML",
+                   ...buttons
+               });
+           }
        } catch(e) {
            await ctx.reply("❌ Qátelik júz berdi.");
        }
@@ -124,16 +141,26 @@ export async function POST(req: Request) {
 
     bot.action("publish_post", async (ctx) => {
        const channelId = process.env.TELEGRAM_CHANNEL_ID;
-       if (!channelId) return ctx.answerCbQuery("Kanal ID tappad?m");
+       if (!channelId) return ctx.answerCbQuery("Kanal ID tappadım");
        
        const cbMsg = ctx.callbackQuery.message as any;
-       const text = cbMsg?.text;
+       const text = cbMsg?.text || cbMsg?.caption;
        
-       if (text) {
-           const finalCaption = `${text}\n\n🤖 @alibek_embergenov`;
-           await ctx.telegram.sendMessage(channelId, finalCaption, { parse_mode: "HTML" });
-           await ctx.editMessageText(text + "\n\n? KANAL?A JIBERILDI!", { parse_mode: "HTML" });
-           await ctx.answerCbQuery("Kanal?a tab?sl? jiberildi!");
+       if (text || cbMsg.photo || cbMsg.video) {
+           const finalCaption = text ? `${text}\n\n🤖- @alibek_embergenov` : '';
+
+           if (cbMsg.photo) {
+               const fileId = cbMsg.photo[cbMsg.photo.length - 1].file_id;
+               await ctx.telegram.sendPhoto(channelId, fileId, { caption: finalCaption, parse_mode: "HTML" });
+               await ctx.editMessageCaption(text + "\n\n✅ KANALǴA JIBERILDI!", { parse_mode: "HTML" });
+           } else if (cbMsg.video) {
+               await ctx.telegram.sendVideo(channelId, cbMsg.video.file_id, { caption: finalCaption, parse_mode: "HTML" });
+               await ctx.editMessageCaption(text + "\n\n✅ KANALǴA JIBERILDI!", { parse_mode: "HTML" });
+           } else if (text) {
+               await ctx.telegram.sendMessage(channelId, finalCaption, { parse_mode: "HTML" });
+               await ctx.editMessageText(text + "\n\n✅ KANALǴA JIBERILDI!", { parse_mode: "HTML" });
+           }
+           await ctx.answerCbQuery("Kanalǵa tabıslı jiberildi!");
        }
     });
     
