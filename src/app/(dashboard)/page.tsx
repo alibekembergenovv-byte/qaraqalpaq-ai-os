@@ -13,10 +13,14 @@ import {
 import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
-  const newsCount = await prisma.newsItem.count();
-  const contentCount = await prisma.content.count();
-  const publishedCount = await prisma.content.count({ where: { status: "PUBLISHED" } });
-  const pendingCount = await prisma.content.count({ where: { status: "NEEDS_REVIEW" } });
+  // ⚡ Bolt Optimization: Parallelize independent database queries
+  // Reduces total query time from sum of individual query times to the max of them
+  const [newsCount, contentCount, publishedCount, pendingCount] = await Promise.all([
+    prisma.newsItem.count(),
+    prisma.content.count(),
+    prisma.content.count({ where: { status: "PUBLISHED" } }),
+    prisma.content.count({ where: { status: "NEEDS_REVIEW" } })
+  ]);
 
   const stats = [
     { title: "Собрано новостей", value: newsCount.toString(), icon: Newspaper, trend: "из базы данных" },
