@@ -1,0 +1,3 @@
+## 2024-05-18 - Prevent Prisma Connection Exhaustion in Next.js
+**Learning:** In Next.js, especially during development with Hot Module Replacement (HMR) or in serverless environments, repeatedly instantiating `new PrismaClient()` in different modules or on every reload leads to database connection exhaustion. This project was creating multiple PrismaClient instances across `src/lib/db.ts`, `src/lib/services/news-collector.ts`, and `src/lib/integrations/scheduler.ts`.
+**Action:** Always use the global singleton pattern for PrismaClient in Next.js (`src/lib/db.ts`) and ensure all other services/modules import this single instance instead of creating their own.
