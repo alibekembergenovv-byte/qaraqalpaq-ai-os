@@ -1,0 +1,3 @@
+## 2024-05-24 - PrismaClient Connection Exhaustion
+**Learning:** Found multiple instances of `new PrismaClient()` being created in services (`src/lib/services/news-collector.ts`, `src/lib/integrations/scheduler.ts`) despite a global instance existing in `src/lib/db.ts`. This leads to connection exhaustion as each new instantiation creates a new connection pool. The `src/lib/db.ts` file itself was also missing the standard Next.js global singleton pattern to prevent dev-time connection exhaustion during Hot Module Replacement (HMR).
+**Action:** Enforce the use of the global singleton `prisma` instance exported from `src/lib/db.ts` across the entire codebase to maintain a single connection pool. Implemented the global singleton pattern in `src/lib/db.ts`.

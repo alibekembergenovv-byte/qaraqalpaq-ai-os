@@ -1,8 +1,7 @@
 import Parser from "rss-parser";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/db";
 
 const parser = new Parser();
-const prisma = new PrismaClient();
 
 export async function collectNewsFromSource(sourceId: string) {
   try {
