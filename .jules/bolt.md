@@ -1,0 +1,3 @@
+## 2023-10-27 - Database Connection Exhaustion and N+1 Queries
+**Learning:** Instantiating `new PrismaClient()` in Next.js Server Components, API routes, or standalone scripts without using the `globalThis` singleton pattern causes rapid database connection exhaustion during local development and hot-reloading (and potentially in serverless environments). Furthermore, inserting objects one-by-one in loops leads to significant N+1 DB calls.
+**Action:** Always import the shared `prisma` singleton from `src/lib/db.ts` instead of calling `new PrismaClient()`. Use `createMany` with `skipDuplicates: true` when performing batch inserts to optimize database interactions from O(n) to O(1) queries.
