@@ -1,8 +1,7 @@
 import Parser from "rss-parser";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/db";
 
 const parser = new Parser();
-const prisma = new PrismaClient();
 
 export async function collectNewsFromSource(sourceId: string) {
   try {
@@ -20,29 +19,29 @@ export async function collectNewsFromSource(sourceId: string) {
 
     let addedCount = 0;
 
-    for (const item of feed.items) {
-      if (!item.link || !item.title) continue;
+    // ⚡ Bolt: Replaced N+1 findUnique/create loop with batched createMany
+    // Why: Batching reduces database roundtrips, significantly improving RSS ingestion speed
+    // Impact: Avoids N queries per RSS feed check. Creates are skipped if duplicate URL
+    // Measurement: Compare processing time of large RSS feeds before and after this change
+    const newItemsData = feed.items
+      .filter((item) => item.link && item.title)
+      .map((item) => ({
+        title: item.title as string,
+        url: item.link as string,
+        sourceId: source.id,
+        publicationDate: item.isoDate ? new Date(item.isoDate) : new Date(),
+        author: item.creator || item.author || null,
+        summary: item.contentSnippet || item.content || null,
+        categoryId: source.categoryId,
+        status: "NEW",
+      }));
 
-      // Duplicate check (simple URL check for Phase 2, Phase 8 will have semantic search)
-      const existing = await prisma.newsItem.findUnique({
-        where: { url: item.link },
+    if (newItemsData.length > 0) {
+      const result = await prisma.newsItem.createMany({
+        data: newItemsData,
+        skipDuplicates: true,
       });
-
-      if (!existing) {
-        await prisma.newsItem.create({
-          data: {
-            title: item.title,
-            url: item.link,
-            sourceId: source.id,
-            publicationDate: item.isoDate ? new Date(item.isoDate) : new Date(),
-            author: item.creator || item.author,
-            summary: item.contentSnippet || item.content,
-            categoryId: source.categoryId,
-            status: "NEW",
-          },
-        });
-        addedCount++;
-      }
+      addedCount = result.count;
     }
 
     // Update last checked
