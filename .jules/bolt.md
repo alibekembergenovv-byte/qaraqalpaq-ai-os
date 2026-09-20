@@ -1,0 +1,3 @@
+## 2026-09-20 - [Batch DB Inserts]
+**Learning:** Found N+1 query bottlenecks during RSS scraping in `src/app/api/news/scrape/route.ts` and `src/lib/services/news-collector.ts`. Iterating through feed items and calling `findUnique` and `create` for each causes excessive DB calls. Additionally, `src/lib/services/news-collector.ts` instantiated a new `PrismaClient` instead of using the global singleton, which risks connection exhaustion.
+**Action:** Use `createMany` with `skipDuplicates: true` instead of looping through `findUnique` and `create` operations. Always import the shared `PrismaClient` instance from `src/lib/db.ts`.
