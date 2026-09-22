@@ -1,0 +1,3 @@
+## 2024-03-24 - Prisma Connection Exhaustion and N+1 Queries
+**Learning:** Instantiating `new PrismaClient()` in multiple service files (`src/lib/services/news-collector.ts`, `src/lib/integrations/scheduler.ts`) instead of using the global singleton causes database connection exhaustion. Additionally, looping through RSS feed items with `findUnique` and `create` causes an N+1 query bottleneck.
+**Action:** Always import `prisma` from `src/lib/db.ts` to use the Next.js global singleton pattern. For batch insertions, use application-level deduplication (e.g., using a Map) and `prisma.newsItem.createMany` with `skipDuplicates: true` to avoid N+1 query bottlenecks.
