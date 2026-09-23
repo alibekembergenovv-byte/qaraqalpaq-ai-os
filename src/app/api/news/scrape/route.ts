@@ -18,6 +18,8 @@ export async function POST() {
     // Fetch all active sources from the DB!
     const sources = await prisma.source.findMany({ where: { active: true } });
 
+    const newItemsData = new Map();
+
     for (const source of sources) {
       if (!source.rssUrl && !source.url) continue;
       const targetUrl = source.rssUrl || source.url; // Use rssUrl if available, else url
@@ -34,29 +36,32 @@ export async function POST() {
             continue; // Skip irrelevant/crypto news
           }
 
-          const exists = await prisma.newsItem.findUnique({
-            where: { url: item.link }
-          });
-
-          if (!exists) {
-            await prisma.newsItem.create({
-              data: {
-                title: item.title,
-                url: item.link,
-                sourceId: source.id,
-                summary: (item.contentSnippet || "").substring(0, 300),
-                publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
-                author: item.creator || "Author",
-                aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
-                status: "NEW"
-              }
+          // Use a Map to prevent duplicates within the batch payload itself
+          if (!newItemsData.has(item.link)) {
+            newItemsData.set(item.link, {
+              title: item.title,
+              url: item.link,
+              sourceId: source.id,
+              summary: (item.contentSnippet || "").substring(0, 300),
+              publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
+              author: item.creator || "Author",
+              aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
+              status: "NEW"
             });
-            addedCount++;
           }
         }
       } catch (e) {
         console.error("Error scraping feed:", targetUrl, e);
       }
+    }
+
+    if (newItemsData.size > 0) {
+      const itemsToInsert = Array.from(newItemsData.values());
+      const result = await prisma.newsItem.createMany({
+        data: itemsToInsert,
+        skipDuplicates: true,
+      });
+      addedCount += result.count;
     }
 
     return NextResponse.json({ success: true, added: addedCount });
