@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     };
 
     // Convert Markdown to HTML for Telegram manually (bold, italic, links)
-    let parsedBody = content.body
+    const parsedBody = content.body
       .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
       .replace(/\*(.*?)\*/g, '<i>$1</i>')
       .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2">$1</a>');
