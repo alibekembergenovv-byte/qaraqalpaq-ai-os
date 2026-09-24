@@ -25,6 +25,9 @@ export async function POST() {
       try {
         const feed = await parser.parseURL(targetUrl as string);
 
+        // Ensure application-level uniqueness on URLs to prevent batch failures
+        const uniqueItemsMap = new Map();
+
         // Parse up to 5 items from each feed
         for (const item of feed.items.slice(0, 5)) {
           if (!item.link || !item.title) continue;
@@ -34,25 +37,29 @@ export async function POST() {
             continue; // Skip irrelevant/crypto news
           }
 
-          const exists = await prisma.newsItem.findUnique({
-            where: { url: item.link }
-          });
-
-          if (!exists) {
-            await prisma.newsItem.create({
-              data: {
-                title: item.title,
-                url: item.link,
-                sourceId: source.id,
-                summary: (item.contentSnippet || "").substring(0, 300),
-                publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
-                author: item.creator || "Author",
-                aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
-                status: "NEW"
-              }
+          if (!uniqueItemsMap.has(item.link)) {
+            uniqueItemsMap.set(item.link, {
+              title: item.title,
+              url: item.link,
+              sourceId: source.id,
+              summary: (item.contentSnippet || "").substring(0, 300),
+              publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
+              author: item.creator || "Author",
+              aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
+              status: "NEW"
             });
-            addedCount++;
           }
+        }
+
+        const uniqueItemsToInsert = Array.from(uniqueItemsMap.values());
+
+        if (uniqueItemsToInsert.length > 0) {
+          // Use createMany with skipDuplicates to avoid N+1 query bottlenecks
+          const result = await prisma.newsItem.createMany({
+            data: uniqueItemsToInsert,
+            skipDuplicates: true,
+          });
+          addedCount += result.count;
         }
       } catch (e) {
         console.error("Error scraping feed:", targetUrl, e);
