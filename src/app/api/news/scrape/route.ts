@@ -14,6 +14,8 @@ function containsBannedKeyword(text: string) {
 export async function POST() {
   try {
     let addedCount = 0;
+    const itemsToInsert = [];
+    const seenUrls = new Set<string>();
     
     // Fetch all active sources from the DB!
     const sources = await prisma.source.findMany({ where: { active: true } });
@@ -34,29 +36,31 @@ export async function POST() {
             continue; // Skip irrelevant/crypto news
           }
 
-          const exists = await prisma.newsItem.findUnique({
-            where: { url: item.link }
-          });
+          if (seenUrls.has(item.link)) continue;
+          seenUrls.add(item.link);
 
-          if (!exists) {
-            await prisma.newsItem.create({
-              data: {
-                title: item.title,
-                url: item.link,
-                sourceId: source.id,
-                summary: (item.contentSnippet || "").substring(0, 300),
-                publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
-                author: item.creator || "Author",
-                aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
-                status: "NEW"
-              }
-            });
-            addedCount++;
-          }
+          itemsToInsert.push({
+            title: item.title,
+            url: item.link,
+            sourceId: source.id,
+            summary: (item.contentSnippet || "").substring(0, 300),
+            publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
+            author: item.creator || "Author",
+            aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
+            status: "NEW"
+          });
         }
       } catch (e) {
         console.error("Error scraping feed:", targetUrl, e);
       }
+    }
+
+    if (itemsToInsert.length > 0) {
+      const result = await prisma.newsItem.createMany({
+        data: itemsToInsert,
+        skipDuplicates: true,
+      });
+      addedCount = result.count;
     }
 
     return NextResponse.json({ success: true, added: addedCount });
