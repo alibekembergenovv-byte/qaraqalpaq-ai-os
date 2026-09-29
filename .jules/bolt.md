@@ -1,0 +1,3 @@
+## 2026-09-29 - [Batch Insertion N+1 Query Fix]
+**Learning:** In Next.js/Prisma serverless environments, individual `findUnique` and `create` operations in a loop (especially for RSS scraping) cause severe N+1 query bottlenecks and risk database connection exhaustion if local `PrismaClient` instances are spawned repeatedly instead of using a global singleton.
+**Action:** Always import the shared `prisma` singleton from `@/lib/db`. To avoid batch insertion conflicts during `createMany` with `skipDuplicates: true`, ensure application-level deduplication (e.g., using a Map based on URL) before executing the database query.
