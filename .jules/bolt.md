@@ -1,0 +1,3 @@
+## 2024-05-24 - Resolve N+1 Query & Connection Exhaustion in Prisma
+**Learning:** Found an N+1 query issue in RSS scraping loops, alongside `new PrismaClient()` instantiations causing connection exhaustion. Using a map for in-memory deduplication before passing the payload to `prisma.createMany({ skipDuplicates: true })` resolves the N+1 issue, but it's critical to deduplicate first to prevent unique constraint failures *within* the batch itself.
+**Action:** Always import the Prisma singleton from `@/lib/db`, and use `createMany` with `skipDuplicates: true` along with internal map-based deduplication for bulk DB ingestion.

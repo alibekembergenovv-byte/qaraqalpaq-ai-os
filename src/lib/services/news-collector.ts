@@ -1,8 +1,7 @@
 import Parser from "rss-parser";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/db";
 
 const parser = new Parser();
-const prisma = new PrismaClient();
 
 export async function collectNewsFromSource(sourceId: string) {
   try {
@@ -18,31 +17,37 @@ export async function collectNewsFromSource(sourceId: string) {
     const feed = await parser.parseURL(source.rssUrl);
     console.log(`Fetched ${feed.items.length} items from ${source.name}`);
 
-    let addedCount = 0;
+    // ⚡ Bolt: Use a map to deduplicate items internally before database insert to prevent unique constraint errors within batch
+    const uniqueItemsMap = new Map();
 
     for (const item of feed.items) {
       if (!item.link || !item.title) continue;
 
-      // Duplicate check (simple URL check for Phase 2, Phase 8 will have semantic search)
-      const existing = await prisma.newsItem.findUnique({
-        where: { url: item.link },
-      });
-
-      if (!existing) {
-        await prisma.newsItem.create({
-          data: {
-            title: item.title,
-            url: item.link,
-            sourceId: source.id,
-            publicationDate: item.isoDate ? new Date(item.isoDate) : new Date(),
-            author: item.creator || item.author,
-            summary: item.contentSnippet || item.content,
-            categoryId: source.categoryId,
-            status: "NEW",
-          },
+      // Use URL as the unique key
+      if (!uniqueItemsMap.has(item.link)) {
+        uniqueItemsMap.set(item.link, {
+          title: item.title,
+          url: item.link,
+          sourceId: source.id,
+          publicationDate: item.isoDate ? new Date(item.isoDate) : new Date(),
+          author: item.creator || item.author,
+          summary: item.contentSnippet || item.content,
+          categoryId: source.categoryId,
+          status: "NEW",
         });
-        addedCount++;
       }
+    }
+
+    const newItemsToInsert = Array.from(uniqueItemsMap.values());
+    let addedCount = 0;
+
+    if (newItemsToInsert.length > 0) {
+      // ⚡ Bolt: Replace N+1 query loop with a single batch insert, skipping any URLs that already exist in DB
+      const result = await prisma.newsItem.createMany({
+        data: newItemsToInsert,
+        skipDuplicates: true,
+      });
+      addedCount = result.count;
     }
 
     // Update last checked
