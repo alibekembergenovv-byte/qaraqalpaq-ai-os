@@ -66,6 +66,11 @@ model NewsItem {
   createdAt        DateTime @default(now())
   contents         Content[]
   factChecks       FactCheck[]
+
+  // ⚡ Bolt Performance Optimization: Added indexes for frequently queried fields in cron jobs and dashboards
+  @@index([status])
+  @@index([sourceId])
+  @@index([categoryId])
 }
 
 model FactCheck {
@@ -95,6 +100,9 @@ model Content {
   scores          ContentScore[]
   scheduledPost   ScheduledPost?
   publishedPost   PublishedPost?
+
+  // ⚡ Bolt Performance Optimization: Added index to speed up dashboard and cron queries
+  @@index([status])
 }
 
 model ContentVersion {
