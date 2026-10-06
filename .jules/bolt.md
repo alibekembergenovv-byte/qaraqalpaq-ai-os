@@ -1,0 +1,3 @@
+## 2024-05-20 - Global PrismaClient & Batch Insertion
+**Learning:** Instantiating `new PrismaClient()` in individual services leads to connection exhaustion in Next.js applications due to hot-reloading. Also, a loop of `findUnique` followed by `create` for RSS feed items introduces severe N+1 query bottlenecks. Furthermore, when using `createMany` with `skipDuplicates: true`, application-level uniqueness must be ensured first to prevent insertion failures caused by duplicates within the batch payload itself.
+**Action:** Always import the shared singleton from `@/lib/db`. Use Prisma's `createMany` with `skipDuplicates: true` for batch insertions, ensuring to deduplicate the payload at the application level (e.g., using a Map or Set) before sending to the database.
