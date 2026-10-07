@@ -1,0 +1,3 @@
+## 2026-10-07 - Prisma Batch Processing & Connection Pooling
+**Learning:** Next.js hot module replacement (HMR) combined with redundant instantiations of `PrismaClient()` across multiple background services/routes can lead to connection pool exhaustion. Furthermore, parsing feeds in a loop and executing sequential `findUnique` and `create` operations creates N+1 bottlenecks.
+**Action:** Always utilize Next.js global singleton patterns for database client instantiation (`globalThis` trick) and consolidate loop-based inserts into `createMany({ skipDuplicates: true })` after ensuring payload-level uniqueness using a `Map` or `Set`.
