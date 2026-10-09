@@ -1,0 +1,3 @@
+## 2024-03-24 - [Fix N+1 query bottleneck for database insertions]
+**Learning:** Using `findUnique` and `create` inside a loop leads to a massive N+1 query bottleneck. Batch insertion with `createMany` fails if duplicate objects exist in the array payload, even when `skipDuplicates: true` is used, because Prisma doesn't deduplicate the array payload itself.
+**Action:** Always map elements inside a Map or Set to enforce application-level deduplication before sending the payload to Prisma's `createMany( { skipDuplicates: true } )` when dealing with potentially duplicate payloads, such as batched RSS feed items.

@@ -25,6 +25,9 @@ export async function POST() {
       try {
         const feed = await parser.parseURL(targetUrl as string);
 
+        // Ensure application-level uniqueness to avoid failing batch inserts on duplicates
+        const validItemsMap = new Map();
+
         // Parse up to 5 items from each feed
         for (const item of feed.items.slice(0, 5)) {
           if (!item.link || !item.title) continue;
@@ -34,25 +37,32 @@ export async function POST() {
             continue; // Skip irrelevant/crypto news
           }
 
-          const exists = await prisma.newsItem.findUnique({
-            where: { url: item.link }
+          // Use a Map to deduplicate items by URL within the batch
+          if (!validItemsMap.has(item.link)) {
+            validItemsMap.set(item.link, {
+              title: item.title,
+              url: item.link,
+              sourceId: source.id,
+              summary: (item.contentSnippet || "").substring(0, 300),
+              publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
+              author: item.creator || "Author",
+              aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
+              status: "NEW"
+            });
+          }
+        }
+
+        const validItems = Array.from(validItemsMap.values());
+
+        if (validItems.length > 0) {
+          // Bulk insert the collected items with skipDuplicates enabled
+          // This prevents N+1 query bottleneck from finding and creating individual items
+          const insertResult = await prisma.newsItem.createMany({
+            data: validItems,
+            skipDuplicates: true
           });
 
-          if (!exists) {
-            await prisma.newsItem.create({
-              data: {
-                title: item.title,
-                url: item.link,
-                sourceId: source.id,
-                summary: (item.contentSnippet || "").substring(0, 300),
-                publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
-                author: item.creator || "Author",
-                aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
-                status: "NEW"
-              }
-            });
-            addedCount++;
-          }
+          addedCount += insertResult.count;
         }
       } catch (e) {
         console.error("Error scraping feed:", targetUrl, e);

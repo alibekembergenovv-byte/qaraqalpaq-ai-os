@@ -20,29 +20,39 @@ export async function collectNewsFromSource(sourceId: string) {
 
     let addedCount = 0;
 
+    // Ensure application-level uniqueness to avoid failing batch inserts on duplicates
+    const validItemsMap = new Map();
+
     for (const item of feed.items) {
       if (!item.link || !item.title) continue;
 
       // Duplicate check (simple URL check for Phase 2, Phase 8 will have semantic search)
-      const existing = await prisma.newsItem.findUnique({
-        where: { url: item.link },
+      // Use a Map to deduplicate items by URL within the batch
+      if (!validItemsMap.has(item.link)) {
+        validItemsMap.set(item.link, {
+          title: item.title,
+          url: item.link,
+          sourceId: source.id,
+          publicationDate: item.isoDate ? new Date(item.isoDate) : new Date(),
+          author: item.creator || item.author,
+          summary: item.contentSnippet || item.content,
+          categoryId: source.categoryId,
+          status: "NEW",
+        });
+      }
+    }
+
+    const validItems = Array.from(validItemsMap.values());
+
+    if (validItems.length > 0) {
+      // Bulk insert the collected items with skipDuplicates enabled
+      // This prevents N+1 query bottleneck from finding and creating individual items
+      const insertResult = await prisma.newsItem.createMany({
+        data: validItems,
+        skipDuplicates: true
       });
 
-      if (!existing) {
-        await prisma.newsItem.create({
-          data: {
-            title: item.title,
-            url: item.link,
-            sourceId: source.id,
-            publicationDate: item.isoDate ? new Date(item.isoDate) : new Date(),
-            author: item.creator || item.author,
-            summary: item.contentSnippet || item.content,
-            categoryId: source.categoryId,
-            status: "NEW",
-          },
-        });
-        addedCount++;
-      }
+      addedCount += insertResult.count;
     }
 
     // Update last checked
