@@ -25,34 +25,37 @@ export async function POST() {
       try {
         const feed = await parser.parseURL(targetUrl as string);
 
+        const uniqueUrls = new Set<string>();
+        const itemsToCreate: any[] = [];
+
         // Parse up to 5 items from each feed
         for (const item of feed.items.slice(0, 5)) {
-          if (!item.link || !item.title) continue;
+          if (!item.link || !item.title || uniqueUrls.has(item.link)) continue;
           
           // Strict filtering based on user's requirements
           if (containsBannedKeyword(item.title) || (item.contentSnippet && containsBannedKeyword(item.contentSnippet))) {
             continue; // Skip irrelevant/crypto news
           }
 
-          const exists = await prisma.newsItem.findUnique({
-            where: { url: item.link }
+          uniqueUrls.add(item.link);
+          itemsToCreate.push({
+            title: item.title,
+            url: item.link,
+            sourceId: source.id,
+            summary: (item.contentSnippet || "").substring(0, 300),
+            publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
+            author: item.creator || "Author",
+            aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
+            status: "NEW"
           });
+        }
 
-          if (!exists) {
-            await prisma.newsItem.create({
-              data: {
-                title: item.title,
-                url: item.link,
-                sourceId: source.id,
-                summary: (item.contentSnippet || "").substring(0, 300),
-                publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
-                author: item.creator || "Author",
-                aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
-                status: "NEW"
-              }
-            });
-            addedCount++;
-          }
+        if (itemsToCreate.length > 0) {
+          const result = await prisma.newsItem.createMany({
+            data: itemsToCreate,
+            skipDuplicates: true,
+          });
+          addedCount += result.count;
         }
       } catch (e) {
         console.error("Error scraping feed:", targetUrl, e);
