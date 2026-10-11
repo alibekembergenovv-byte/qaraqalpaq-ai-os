@@ -18,6 +18,19 @@ export async function POST() {
     // Fetch all active sources from the DB!
     const sources = await prisma.source.findMany({ where: { active: true } });
 
+    // ⚡ Bolt: Use a Set and array to batch inserts and avoid N+1 queries
+    const uniqueUrls = new Set<string>();
+    const newsItemsToCreate: {
+      title: string;
+      url: string;
+      sourceId: string;
+      summary: string;
+      publicationDate: Date;
+      author: string;
+      aiScore: number;
+      status: string;
+    }[] = [];
+
     for (const source of sources) {
       if (!source.rssUrl && !source.url) continue;
       const targetUrl = source.rssUrl || source.url; // Use rssUrl if available, else url
@@ -34,29 +47,33 @@ export async function POST() {
             continue; // Skip irrelevant/crypto news
           }
 
-          const exists = await prisma.newsItem.findUnique({
-            where: { url: item.link }
-          });
-
-          if (!exists) {
-            await prisma.newsItem.create({
-              data: {
-                title: item.title,
-                url: item.link,
-                sourceId: source.id,
-                summary: (item.contentSnippet || "").substring(0, 300),
-                publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
-                author: item.creator || "Author",
-                aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
-                status: "NEW"
-              }
+          // Application-level uniqueness check to prevent batch failure
+          if (!uniqueUrls.has(item.link)) {
+            uniqueUrls.add(item.link);
+            newsItemsToCreate.push({
+              title: item.title,
+              url: item.link,
+              sourceId: source.id,
+              summary: (item.contentSnippet || "").substring(0, 300),
+              publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
+              author: item.creator || "Author",
+              aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
+              status: "NEW"
             });
-            addedCount++;
           }
         }
       } catch (e) {
         console.error("Error scraping feed:", targetUrl, e);
       }
+    }
+
+    if (newsItemsToCreate.length > 0) {
+      // ⚡ Bolt: Batch insert to fix N+1 query issue
+      const result = await prisma.newsItem.createMany({
+        data: newsItemsToCreate,
+        skipDuplicates: true,
+      });
+      addedCount = result.count;
     }
 
     return NextResponse.json({ success: true, added: addedCount });
