@@ -14,6 +14,8 @@ function containsBannedKeyword(text: string) {
 export async function POST() {
   try {
     let addedCount = 0;
+    const newItemsData = [];
+    const seenUrls = new Set<string>();
     
     // Fetch all active sources from the DB!
     const sources = await prisma.source.findMany({ where: { active: true } });
@@ -34,29 +36,33 @@ export async function POST() {
             continue; // Skip irrelevant/crypto news
           }
 
-          const exists = await prisma.newsItem.findUnique({
-            where: { url: item.link }
-          });
-
-          if (!exists) {
-            await prisma.newsItem.create({
-              data: {
-                title: item.title,
-                url: item.link,
-                sourceId: source.id,
-                summary: (item.contentSnippet || "").substring(0, 300),
-                publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
-                author: item.creator || "Author",
-                aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
-                status: "NEW"
-              }
+          if (!seenUrls.has(item.link)) {
+            seenUrls.add(item.link);
+            newItemsData.push({
+              title: item.title,
+              url: item.link,
+              sourceId: source.id,
+              summary: (item.contentSnippet || "").substring(0, 300),
+              publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
+              author: item.creator || "Author",
+              aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
+              status: "NEW"
             });
-            addedCount++;
           }
         }
       } catch (e) {
         console.error("Error scraping feed:", targetUrl, e);
       }
+    }
+
+    if (newItemsData.length > 0) {
+      // ⚡ Bolt: Replaced individual findUnique + create calls inside loop with a single createMany batch operation.
+      // ⚡ This avoids N+1 queries when scraping RSS feeds, drastically improving performance.
+      const result = await prisma.newsItem.createMany({
+        data: newItemsData,
+        skipDuplicates: true,
+      });
+      addedCount = result.count;
     }
 
     return NextResponse.json({ success: true, added: addedCount });
