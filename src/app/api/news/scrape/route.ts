@@ -13,10 +13,16 @@ function containsBannedKeyword(text: string) {
 
 export async function POST() {
   try {
-    let addedCount = 0;
-    
     // Fetch all active sources from the DB!
     const sources = await prisma.source.findMany({ where: { active: true } });
+
+    // ⚡ Bolt Optimization: Batch Database Insertions
+    // Why: Previously used N+1 queries (findUnique and create in a loop), causing database bottleneck.
+    // What: Gather all valid news items and insert them with a single createMany call.
+    // Impact: Significantly reduces database roundtrips and connection overhead.
+    // Measurement: Compare execution time of scraping endpoint before and after this optimization.
+    const newsItemsToInsert = [];
+    const uniqueUrls = new Set<string>();
 
     for (const source of sources) {
       if (!source.rssUrl && !source.url) continue;
@@ -34,29 +40,34 @@ export async function POST() {
             continue; // Skip irrelevant/crypto news
           }
 
-          const exists = await prisma.newsItem.findUnique({
-            where: { url: item.link }
-          });
+          // Prevent duplicates within the current batch to avoid createMany errors
+          if (uniqueUrls.has(item.link)) continue;
+          uniqueUrls.add(item.link);
 
-          if (!exists) {
-            await prisma.newsItem.create({
-              data: {
-                title: item.title,
-                url: item.link,
-                sourceId: source.id,
-                summary: (item.contentSnippet || "").substring(0, 300),
-                publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
-                author: item.creator || "Author",
-                aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
-                status: "NEW"
-              }
-            });
-            addedCount++;
-          }
+          newsItemsToInsert.push({
+            title: item.title,
+            url: item.link,
+            sourceId: source.id,
+            summary: (item.contentSnippet || "").substring(0, 300),
+            publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
+            author: item.creator || "Author",
+            aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
+            status: "NEW"
+          });
         }
       } catch (e) {
         console.error("Error scraping feed:", targetUrl, e);
       }
+    }
+
+    let addedCount = 0;
+    if (newsItemsToInsert.length > 0) {
+      // Execute batch insert, skipping any that already exist in DB
+      const result = await prisma.newsItem.createMany({
+        data: newsItemsToInsert,
+        skipDuplicates: true
+      });
+      addedCount = result.count;
     }
 
     return NextResponse.json({ success: true, added: addedCount });
