@@ -1,0 +1,3 @@
+## 2023-11-20 - Batch Inserts and Application-Level Uniqueness
+**Learning:** When using Prisma's `createMany` with `skipDuplicates: true` to avoid N+1 query bottlenecks during insertions, it's essential to enforce application-level uniqueness first (e.g., using a `Set` to track processed items). Otherwise, duplicate entries within the batch payload itself will cause the entire insertion operation to fail, negating the optimization.
+**Action:** Always pre-process and deduplicate batch payloads using a `Set` or `Map` in memory before passing them to Prisma's `createMany`, even when `skipDuplicates: true` is enabled.
