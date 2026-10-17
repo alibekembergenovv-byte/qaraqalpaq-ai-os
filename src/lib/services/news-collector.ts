@@ -1,8 +1,7 @@
 import Parser from "rss-parser";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/db";
 
 const parser = new Parser();
-const prisma = new PrismaClient();
 
 export async function collectNewsFromSource(sourceId: string) {
   try {
@@ -20,29 +19,36 @@ export async function collectNewsFromSource(sourceId: string) {
 
     let addedCount = 0;
 
+    // Deduplicate URLs in memory for the batch payload
+    const seenUrls = new Set<string>();
+    const newsItemsToCreate = [];
+
     for (const item of feed.items) {
       if (!item.link || !item.title) continue;
 
       // Duplicate check (simple URL check for Phase 2, Phase 8 will have semantic search)
-      const existing = await prisma.newsItem.findUnique({
-        where: { url: item.link },
-      });
-
-      if (!existing) {
-        await prisma.newsItem.create({
-          data: {
-            title: item.title,
-            url: item.link,
-            sourceId: source.id,
-            publicationDate: item.isoDate ? new Date(item.isoDate) : new Date(),
-            author: item.creator || item.author,
-            summary: item.contentSnippet || item.content,
-            categoryId: source.categoryId,
-            status: "NEW",
-          },
+      if (!seenUrls.has(item.link)) {
+        seenUrls.add(item.link);
+        newsItemsToCreate.push({
+          title: item.title,
+          url: item.link,
+          sourceId: source.id,
+          publicationDate: item.isoDate ? new Date(item.isoDate) : new Date(),
+          author: item.creator || item.author,
+          summary: item.contentSnippet || item.content,
+          categoryId: source.categoryId,
+          status: "NEW",
         });
-        addedCount++;
       }
+    }
+
+    if (newsItemsToCreate.length > 0) {
+      // ⚡ Bolt Optimization: Use createMany with skipDuplicates instead of N+1 queries
+      const result = await prisma.newsItem.createMany({
+        data: newsItemsToCreate,
+        skipDuplicates: true,
+      });
+      addedCount = result.count;
     }
 
     // Update last checked
