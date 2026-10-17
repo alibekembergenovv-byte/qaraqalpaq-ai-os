@@ -1,0 +1,3 @@
+## 2023-10-24 - Prisma Batch Insert Bottleneck
+**Learning:** In the `qaraqalpaq-ai-content-os` app, relying on a loop with `prisma.findUnique` and `prisma.create` for batched inputs (like RSS feed scraping) introduces N+1 query bottlenecks and duplicates connections unnecessarily. Additionally, relying on `new PrismaClient()` in local scopes instead of the shared `prisma` singleton from `@/lib/db` can exhaust connection pools.
+**Action:** Always batch database inserts using `prisma.createMany({ skipDuplicates: true })` and perform a pre-check with an in-memory `Set` on the payload to prevent DB-level unique constraint violations during batch operations. Always import `prisma` from the shared library instead of instantiating it.
