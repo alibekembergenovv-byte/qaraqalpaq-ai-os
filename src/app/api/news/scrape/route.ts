@@ -25,6 +25,9 @@ export async function POST() {
       try {
         const feed = await parser.parseURL(targetUrl as string);
 
+        const seenUrls = new Set<string>();
+        const newItemsData = [];
+
         // Parse up to 5 items from each feed
         for (const item of feed.items.slice(0, 5)) {
           if (!item.link || !item.title) continue;
@@ -34,25 +37,31 @@ export async function POST() {
             continue; // Skip irrelevant/crypto news
           }
 
-          const exists = await prisma.newsItem.findUnique({
-            where: { url: item.link }
-          });
-
-          if (!exists) {
-            await prisma.newsItem.create({
-              data: {
-                title: item.title,
-                url: item.link,
-                sourceId: source.id,
-                summary: (item.contentSnippet || "").substring(0, 300),
-                publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
-                author: item.creator || "Author",
-                aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
-                status: "NEW"
-              }
+          if (!seenUrls.has(item.link)) {
+            seenUrls.add(item.link);
+            newItemsData.push({
+              title: item.title,
+              url: item.link,
+              sourceId: source.id,
+              summary: (item.contentSnippet || "").substring(0, 300),
+              publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
+              author: item.creator || "Author",
+              aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
+              status: "NEW"
             });
-            addedCount++;
           }
+        }
+
+        // ⚡ Bolt Optimization: Batch database inserts
+        // Replaced N+1 findUnique & create queries inside loop with a single createMany call.
+        // Impact: Eliminates ~10 DB roundtrips per feed, reducing scrape time significantly.
+        // Measurement: Observe faster API response times on /api/news/scrape.
+        if (newItemsData.length > 0) {
+          const result = await prisma.newsItem.createMany({
+            data: newItemsData,
+            skipDuplicates: true,
+          });
+          addedCount += result.count;
         }
       } catch (e) {
         console.error("Error scraping feed:", targetUrl, e);
