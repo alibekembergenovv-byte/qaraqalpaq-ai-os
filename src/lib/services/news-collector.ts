@@ -1,8 +1,7 @@
 import Parser from "rss-parser";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/db";
 
 const parser = new Parser();
-const prisma = new PrismaClient();
 
 export async function collectNewsFromSource(sourceId: string) {
   try {
@@ -18,32 +17,35 @@ export async function collectNewsFromSource(sourceId: string) {
     const feed = await parser.parseURL(source.rssUrl);
     console.log(`Fetched ${feed.items.length} items from ${source.name}`);
 
-    let addedCount = 0;
-
+    // ⚡ Bolt: Deduplicate the incoming feed items in-memory using a Set
+    // to prevent insertion failures from duplicates within the same batch.
+    const uniqueItemsMap = new Map<string, any>();
     for (const item of feed.items) {
       if (!item.link || !item.title) continue;
-
-      // Duplicate check (simple URL check for Phase 2, Phase 8 will have semantic search)
-      const existing = await prisma.newsItem.findUnique({
-        where: { url: item.link },
-      });
-
-      if (!existing) {
-        await prisma.newsItem.create({
-          data: {
-            title: item.title,
-            url: item.link,
-            sourceId: source.id,
-            publicationDate: item.isoDate ? new Date(item.isoDate) : new Date(),
-            author: item.creator || item.author,
-            summary: item.contentSnippet || item.content,
-            categoryId: source.categoryId,
-            status: "NEW",
-          },
-        });
-        addedCount++;
+      // Use URL as unique key
+      if (!uniqueItemsMap.has(item.link)) {
+        uniqueItemsMap.set(item.link, item);
       }
     }
+
+    const uniqueItems = Array.from(uniqueItemsMap.values());
+
+    // ⚡ Bolt: Batch create to avoid N+1 DB operations bottleneck
+    const result = await prisma.newsItem.createMany({
+      data: uniqueItems.map(item => ({
+        title: item.title,
+        url: item.link,
+        sourceId: source.id,
+        publicationDate: item.isoDate ? new Date(item.isoDate) : new Date(),
+        author: item.creator || item.author,
+        summary: item.contentSnippet || item.content,
+        categoryId: source.categoryId,
+        status: "NEW",
+      })),
+      skipDuplicates: true, // Let DB handle existing records efficiently
+    });
+
+    const addedCount = result.count;
 
     // Update last checked
     await prisma.source.update({
