@@ -1,8 +1,6 @@
 import cron from "node-cron";
-import { PrismaClient } from "@prisma/client";
 import { publishToChannel } from "./telegram";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/db";
 
 // This would run on a dedicated worker in production, 
 // but for a monolithic Next.js app we can initialize it in a custom server or instrumentation hook.
