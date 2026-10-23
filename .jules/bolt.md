@@ -1,0 +1,3 @@
+## 2023-10-23 - Prisma createMany Batch Failures
+**Learning:** When using Prisma's `createMany` with `skipDuplicates: true`, batch insertion can fail if the payload itself contains duplicate items. Additionally, attempting to deduplicate the payload by fetching existing DB records into memory causes severe performance regressions and OOM risks.
+**Action:** Always perform application-level deduplication (e.g., using a Map or Set) on the payload first to ensure it contains only unique items *before* calling `createMany`. Rely entirely on Prisma's `skipDuplicates` for database-level deduplication rather than fetching records into memory.
