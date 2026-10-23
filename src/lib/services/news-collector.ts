@@ -1,8 +1,7 @@
 import Parser from "rss-parser";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/db";
 
 const parser = new Parser();
-const prisma = new PrismaClient();
 
 export async function collectNewsFromSource(sourceId: string) {
   try {
@@ -18,31 +17,36 @@ export async function collectNewsFromSource(sourceId: string) {
     const feed = await parser.parseURL(source.rssUrl);
     console.log(`Fetched ${feed.items.length} items from ${source.name}`);
 
-    let addedCount = 0;
-
+    // Deduplicate incoming items by URL to avoid batch insertion failures
+    const uniqueItemsMap = new Map();
     for (const item of feed.items) {
       if (!item.link || !item.title) continue;
 
-      // Duplicate check (simple URL check for Phase 2, Phase 8 will have semantic search)
-      const existing = await prisma.newsItem.findUnique({
-        where: { url: item.link },
-      });
-
-      if (!existing) {
-        await prisma.newsItem.create({
-          data: {
-            title: item.title,
-            url: item.link,
-            sourceId: source.id,
-            publicationDate: item.isoDate ? new Date(item.isoDate) : new Date(),
-            author: item.creator || item.author,
-            summary: item.contentSnippet || item.content,
-            categoryId: source.categoryId,
-            status: "NEW",
-          },
+      if (!uniqueItemsMap.has(item.link)) {
+        uniqueItemsMap.set(item.link, {
+          title: item.title,
+          url: item.link,
+          sourceId: source.id,
+          publicationDate: item.isoDate ? new Date(item.isoDate) : new Date(),
+          author: item.creator || item.author,
+          summary: item.contentSnippet || item.content,
+          categoryId: source.categoryId,
+          status: "NEW",
         });
-        addedCount++;
       }
+    }
+
+    const uniqueItems = Array.from(uniqueItemsMap.values());
+    let addedCount = 0;
+
+    if (uniqueItems.length > 0) {
+      // ⚡ Bolt: Replaced N+1 findUnique/create loop with createMany and skipDuplicates
+      // This massively improves batch insertion performance and reduces DB load
+      const createResult = await prisma.newsItem.createMany({
+        data: uniqueItems,
+        skipDuplicates: true,
+      });
+      addedCount = createResult.count;
     }
 
     // Update last checked
