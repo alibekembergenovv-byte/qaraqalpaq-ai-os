@@ -18,6 +18,10 @@ export async function POST() {
     // Fetch all active sources from the DB!
     const sources = await prisma.source.findMany({ where: { active: true } });
 
+    // ⚡ Bolt: Accumulate all new items across sources for batch insertion
+    const newItems = [];
+    const seenUrls = new Set<string>();
+
     for (const source of sources) {
       if (!source.rssUrl && !source.url) continue;
       const targetUrl = source.rssUrl || source.url; // Use rssUrl if available, else url
@@ -34,29 +38,32 @@ export async function POST() {
             continue; // Skip irrelevant/crypto news
           }
 
-          const exists = await prisma.newsItem.findUnique({
-            where: { url: item.link }
-          });
-
-          if (!exists) {
-            await prisma.newsItem.create({
-              data: {
-                title: item.title,
-                url: item.link,
-                sourceId: source.id,
-                summary: (item.contentSnippet || "").substring(0, 300),
-                publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
-                author: item.creator || "Author",
-                aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
-                status: "NEW"
-              }
+          if (!seenUrls.has(item.link)) {
+            seenUrls.add(item.link);
+            newItems.push({
+              title: item.title,
+              url: item.link,
+              sourceId: source.id,
+              summary: (item.contentSnippet || "").substring(0, 300),
+              publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
+              author: item.creator || "Author",
+              aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
+              status: "NEW"
             });
-            addedCount++;
           }
         }
       } catch (e) {
         console.error("Error scraping feed:", targetUrl, e);
       }
+    }
+
+    if (newItems.length > 0) {
+      // ⚡ Bolt: Batch insert to eliminate N+1 query problem, delegating duplicate check to DB
+      const result = await prisma.newsItem.createMany({
+        data: newItems,
+        skipDuplicates: true,
+      });
+      addedCount = result.count;
     }
 
     return NextResponse.json({ success: true, added: addedCount });
