@@ -1,0 +1,3 @@
+## 2024-09-08 - Promise.all for independent server-side database queries
+**Learning:** In Next.js App Router server components (like `page.tsx`), doing multiple sequential `await` calls to a database (like Prisma `.count()` or `.findMany()`) blocks the render on each request. These components render on the server and TTFB (Time to First Byte) is critical. If the queries don't depend on each other, it's an anti-pattern to await them sequentially.
+**Action:** Next time you see multiple independent database calls in a server component (or API route), wrap them in `Promise.all()` to fetch them concurrently. This is a very clean, high-impact optimization for backend/serverless performance.
