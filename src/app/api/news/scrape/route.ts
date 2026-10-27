@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Parser from "rss-parser";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 
 const parser = new Parser();
 
@@ -24,6 +25,8 @@ export async function POST() {
       
       try {
         const feed = await parser.parseURL(targetUrl as string);
+        const newItems: Prisma.NewsItemCreateManyInput[] = [];
+        const seenUrls = new Set<string>();
 
         // Parse up to 5 items from each feed
         for (const item of feed.items.slice(0, 5)) {
@@ -34,25 +37,27 @@ export async function POST() {
             continue; // Skip irrelevant/crypto news
           }
 
-          const exists = await prisma.newsItem.findUnique({
-            where: { url: item.link }
-          });
+          if (seenUrls.has(item.link)) continue;
+          seenUrls.add(item.link);
 
-          if (!exists) {
-            await prisma.newsItem.create({
-              data: {
-                title: item.title,
-                url: item.link,
-                sourceId: source.id,
-                summary: (item.contentSnippet || "").substring(0, 300),
-                publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
-                author: item.creator || "Author",
-                aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
-                status: "NEW"
-              }
-            });
-            addedCount++;
-          }
+          newItems.push({
+            title: item.title,
+            url: item.link,
+            sourceId: source.id,
+            summary: (item.contentSnippet || "").substring(0, 300),
+            publicationDate: item.pubDate ? new Date(item.pubDate) : new Date(),
+            author: item.creator || "Author",
+            aiScore: Math.floor(Math.random() * 20) + 80, // Score 80-100 since it's targeted
+            status: "NEW"
+          });
+        }
+
+        if (newItems.length > 0) {
+          const result = await prisma.newsItem.createMany({
+            data: newItems,
+            skipDuplicates: true,
+          });
+          addedCount += result.count;
         }
       } catch (e) {
         console.error("Error scraping feed:", targetUrl, e);
