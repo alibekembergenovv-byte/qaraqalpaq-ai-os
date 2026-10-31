@@ -1,0 +1,3 @@
+## 2024-03-24 - PrismaClient Connection Exhaustion and N+1 Inserts
+**Learning:** Using `new PrismaClient()` directly in services leads to connection exhaustion. Additionally, using sequential `findUnique` and `create` calls within a loop causes significant N+1 performance bottlenecks. Attempting to deduplicate existing records by loading them all into memory before insertion can cause severe regressions and OOM risks.
+**Action:** Always import the global `PrismaClient` singleton from `src/lib/db.ts` or equivalent. For batch insertions, rely on `createMany({ skipDuplicates: true })`. To avoid insert failures from duplicate keys *within* the incoming payload, use a `Set` (or similar) to deduplicate only the new batch before passing it to `createMany`.
