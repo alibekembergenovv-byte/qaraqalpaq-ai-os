@@ -20,29 +20,34 @@ export async function collectNewsFromSource(sourceId: string) {
 
     let addedCount = 0;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const itemsToCreate: any[] = [];
+    const seenUrls = new Set<string>();
+
     for (const item of feed.items) {
       if (!item.link || !item.title) continue;
 
-      // Duplicate check (simple URL check for Phase 2, Phase 8 will have semantic search)
-      const existing = await prisma.newsItem.findUnique({
-        where: { url: item.link },
-      });
-
-      if (!existing) {
-        await prisma.newsItem.create({
-          data: {
-            title: item.title,
-            url: item.link,
-            sourceId: source.id,
-            publicationDate: item.isoDate ? new Date(item.isoDate) : new Date(),
-            author: item.creator || item.author,
-            summary: item.contentSnippet || item.content,
-            categoryId: source.categoryId,
-            status: "NEW",
-          },
+      if (!seenUrls.has(item.link)) {
+        seenUrls.add(item.link);
+        itemsToCreate.push({
+          title: item.title,
+          url: item.link,
+          sourceId: source.id,
+          publicationDate: item.isoDate ? new Date(item.isoDate) : new Date(),
+          author: item.creator || item.author,
+          summary: item.contentSnippet || item.content,
+          categoryId: source.categoryId,
+          status: "NEW",
         });
-        addedCount++;
       }
+    }
+
+    if (itemsToCreate.length > 0) {
+      const result = await prisma.newsItem.createMany({
+        data: itemsToCreate,
+        skipDuplicates: true,
+      });
+      addedCount = result.count;
     }
 
     // Update last checked
